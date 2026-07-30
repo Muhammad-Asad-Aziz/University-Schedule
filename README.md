@@ -7,7 +7,7 @@ It works on both PC and mobile, with PC having the horitozal view and the mobile
 pls don't use my crappy app. This is repo is public so that AI can read it easily. I can't guarantee your or my security...
 
 # Website
-https://muhammad-asad-aziz.github.io/Schedule.github.io/
+https://muhammad-asad-aziz.github.io/University-Schedule/
 
 # Preview
 ## Desktop
