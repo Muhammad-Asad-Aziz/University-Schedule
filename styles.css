@@ -180,6 +180,21 @@
     .class-block:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(0,0,0,.08)}
     .class-code{font-weight:700;font-size:.95rem;color:var(--ctx,#111827)}
     .class-sub{font-size:.8rem;text-transform:uppercase}
+    .class-subtitle{
+      font-size:.75rem;
+      font-weight:500;
+      opacity:.85;
+      line-height:1.2;
+      max-height:1.2em;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .form label .hint{
+      font-weight:400;
+      font-size:.75rem;
+      color:var(--text-3);
+    }
 
     /* Agenda (mobile-first) */
     .agenda{
@@ -202,6 +217,7 @@
       flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:4px
     }
     .agenda-content .code{font-weight:700}
+    .agenda-content .subtitle{font-size:.8rem;opacity:.85;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .agenda-content .meta{font-size:.85rem;color:var(--text-2);display:flex;gap:10px;flex-wrap:wrap}
 
     /* Modal */

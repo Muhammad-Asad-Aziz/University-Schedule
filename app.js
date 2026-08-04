@@ -81,15 +81,15 @@
         name: "Computer Engineering",
         classes: [
           // day: 1=Mon..7=Sun
-          { id:genId(), day:1, start:"09:30", end:"12:30", code:"LNG321 S2",   location:"CB1301",            instructor:"RACHANEE",         color:{type:"palette", id:"orange"} },
-          { id:genId(), day:2, start:"08:30", end:"10:00", code:"MTH234 S31",  location:"CB2505",            instructor:"Songpon",          color:{type:"palette", id:"green"} },
-          { id:genId(), day:2, start:"10:30", end:"12:30", code:"PHY10401 S31",location:"SC2110",            instructor:"Tanapat, Thana",   color:{type:"palette", id:"purple"} },
-          { id:genId(), day:2, start:"13:30", end:"17:30", code:"CPE231 S31",  location:"CPE1121",           instructor:"Peerapon",         color:{type:"palette", id:"blue"} },
-          { id:genId(), day:3, start:"10:30", end:"12:30", code:"GEN101 S40",  location:"GYM (KFC 3rd Floor)",instructor:"Nanthanan",        color:{type:"palette", id:"red"} },
-          { id:genId(), day:3, start:"13:30", end:"16:30", code:"GEN231 S35",  location:"ONLINE",            instructor:"Suthidee",         color:{type:"palette", id:"teal"} },
-          { id:genId(), day:4, start:"08:30", end:"12:30", code:"CPE222 S32",  location:"LIB108",            instructor:"Suthatip, Pongsagon", color:{type:"palette", id:"amber"} },
-          { id:genId(), day:5, start:"08:30", end:"10:00", code:"MTH234 S31",  location:"CB2505",            instructor:"Songpon",          color:{type:"palette", id:"green"} },
-          { id:genId(), day:5, start:"11:30", end:"12:30", code:"PHY10401 S31",location:"SC2110",            instructor:"Tanapat, Thana",   color:{type:"palette", id:"purple"} },
+          { id:genId(), day:1, start:"09:30", end:"12:30", code:"LNG321 S2",   subtitle:"English for Engineering", location:"CB1301",            instructor:"RACHANEE",         color:{type:"palette", id:"orange"} },
+          { id:genId(), day:2, start:"08:30", end:"10:00", code:"MTH234 S31",  subtitle:"Differential Equations", location:"CB2505",            instructor:"Songpon",          color:{type:"palette", id:"green"} },
+          { id:genId(), day:2, start:"10:30", end:"12:30", code:"PHY10401 S31",subtitle:"Physics for Engineers",   location:"SC2110",            instructor:"Tanapat, Thana",   color:{type:"palette", id:"purple"} },
+          { id:genId(), day:2, start:"13:30", end:"17:30", code:"CPE231 S31",  subtitle:"Big Data Engineering",   location:"CPE1121",           instructor:"Peerapon",         color:{type:"palette", id:"blue"} },
+          { id:genId(), day:3, start:"10:30", end:"12:30", code:"GEN101 S40",  subtitle:"Physical Education",     location:"GYM (KFC 3rd Floor)",instructor:"Nanthanan",        color:{type:"palette", id:"red"} },
+          { id:genId(), day:3, start:"13:30", end:"16:30", code:"GEN231 S35",  subtitle:"Digital Literacy",       location:"ONLINE",            instructor:"Suthidee",         color:{type:"palette", id:"teal"} },
+          { id:genId(), day:4, start:"08:30", end:"12:30", code:"CPE222 S32",  subtitle:"Computer Organization",  location:"LIB108",            instructor:"Suthatip, Pongsagon", color:{type:"palette", id:"amber"} },
+          { id:genId(), day:5, start:"08:30", end:"10:00", code:"MTH234 S31",  subtitle:"Differential Equations", location:"CB2505",            instructor:"Songpon",          color:{type:"palette", id:"green"} },
+          { id:genId(), day:5, start:"11:30", end:"12:30", code:"PHY10401 S31",subtitle:"Physics for Engineers",   location:"SC2110",            instructor:"Tanapat, Thana",   color:{type:"palette", id:"purple"} },
         ]
       };
       const blank = { id: genId(), name:"Blank", classes: [] };
@@ -186,6 +186,7 @@
     const startInput = document.getElementById("classStart");
     const endInput = document.getElementById("classEnd");
     const codeInput = document.getElementById("classCode");
+    const subtitleInput = document.getElementById("classSubtitle");
     const locationInput = document.getElementById("classLocation");
     const instructorInput = document.getElementById("classInstructor");
     const paletteSwatches = document.getElementById("paletteSwatches");
@@ -826,6 +827,13 @@
         sub2.textContent = cls.instructor;
 
         block.appendChild(code);
+        if (cls.subtitle) {
+          const subTitle = document.createElement("div");
+          subTitle.className = "class-subtitle";
+          subTitle.title = cls.subtitle; // full text on hover if truncated
+          subTitle.textContent = cls.subtitle;
+          block.appendChild(subTitle);
+        }
         block.appendChild(sub1);
         block.appendChild(sub2);
 
@@ -888,6 +896,14 @@
           code.className = "code";
           code.style.cssText = classStyle(cls.color) + "color:var(--ctx)";
           code.textContent = cls.code;
+          let subtitleEl = null;
+          if (cls.subtitle) {
+            subtitleEl = document.createElement("div");
+            subtitleEl.className = "subtitle";
+            subtitleEl.style.cssText = "color:var(--ctx)";
+            subtitleEl.title = cls.subtitle;
+            subtitleEl.textContent = cls.subtitle;
+          }
           const meta = document.createElement("div");
           meta.className = "meta";
           for(const text of [cls.location, cls.instructor]){
@@ -896,7 +912,9 @@
             span.textContent = text;
             meta.appendChild(span);
           }
-          content.append(code, meta);
+          content.append(code);
+          if (subtitleEl) content.appendChild(subtitleEl);
+          content.append(meta);
           row.append(time, content);
           dayWrap.appendChild(row);
         }
@@ -961,6 +979,7 @@
       startInput.value = cls?.start || defStart;
       endInput.value = cls?.end || defEnd;
       codeInput.value = cls?.code || "";
+      subtitleInput.value = cls?.subtitle || "";
       locationInput.value = cls?.location || "";
       instructorInput.value = cls?.instructor || "";
 
@@ -1043,6 +1062,7 @@
       const start = startInput.value;
       const end = endInput.value;
       const code = (codeInput.value||"").trim();
+      const subtitle = (subtitleInput.value||"").trim();
       const location = (locationInput.value||"").trim();
       const instructor = (instructorInput.value||"").trim();
 
@@ -1058,7 +1078,7 @@
         color = { type:"palette", id: colorChoice.id || "blue" };
       }
 
-      const payload = { id, day, start, end, code, location, instructor, color };
+      const payload = { id, day, start, end, code, subtitle, location, instructor, color };
 
       const idx = p.classes.findIndex(c=>c.id===id);
       if(idx>=0){ p.classes[idx] = payload; } else { p.classes.push(payload); }
@@ -1107,7 +1127,7 @@
       if(item.color?.type==="custom" && isHex(item.color.bg) && isHex(item.color.border) && isHex(item.color.text)){
         color = {type:"custom", bg:item.color.bg, border:item.color.border, text:item.color.text};
       }
-      return {id:genId(), day, start, end, code:safeText(item.code), location:safeText(item.location), instructor:safeText(item.instructor), color};
+      return {id:genId(), day, start, end, code:safeText(item.code), subtitle:safeText(item.subtitle).slice(0,120), location:safeText(item.location), instructor:safeText(item.instructor), color};
     }
 
     async function importSchedules(file){
