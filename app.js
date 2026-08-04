@@ -900,7 +900,7 @@
           if (cls.subtitle) {
             subtitleEl = document.createElement("div");
             subtitleEl.className = "subtitle";
-            subtitleEl.style.cssText = "color:var(--ctx)";
+            subtitleEl.style.cssText = classStyle(cls.color) + "color:var(--ctx)";
             subtitleEl.title = cls.subtitle;
             subtitleEl.textContent = cls.subtitle;
           }

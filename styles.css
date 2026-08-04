@@ -214,7 +214,7 @@
       padding:10px;font-weight:700;color:var(--text-2);font-size:.8rem
     }
     .agenda-content{
-      flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:4px
+      flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:4px;min-width:0;overflow:hidden
     }
     .agenda-content .code{font-weight:700}
     .agenda-content .subtitle{font-size:.8rem;opacity:.85;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
