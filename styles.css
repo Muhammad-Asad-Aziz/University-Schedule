@@ -28,7 +28,7 @@
       background:rgba(0,0,0,.6);
     }
     html.dark .agenda-time{
-      background:#0f172a;
+      background:#1e293b;
     }
 
     *{box-sizing:border-box}
@@ -304,7 +304,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,.class-block:focus
 .class-block.dragging,.agenda-item.dragging{opacity:.42;transform:scale(.97);box-shadow:none}
 .grid-cell.drop-target,.agenda-day.drop-target{background:color-mix(in srgb,var(--accent) 12%,transparent);outline:2px dashed var(--accent);outline-offset:-3px}
 .agenda-item{cursor:grab;transition:transform .18s ease,box-shadow .18s ease,opacity .18s ease}
-.agenda-item:hover{transform:translateX(3px);box-shadow:0 8px 20px rgba(15,23,42,.08)}
+.agenda-item:hover{transform:translateX(3px);box-shadow:0 8px 20px rgba(255,255,255,.06)}
 .modal.show .backdrop{animation:fadeIn .2s ease both}
 .modal.show .dialog{animation:dialogIn .25s cubic-bezier(.2,.8,.2,1) both}
 .shortcut-list{display:grid;grid-template-columns:1fr 1fr;gap:12px;color:var(--text-2)}
