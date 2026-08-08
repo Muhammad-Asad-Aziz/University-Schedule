@@ -962,10 +962,7 @@
         el.setAttribute("aria-label", `${p.name} palette`);
         el.innerHTML = `
           <div class="preview" style="background:${p.bg};color:${p.border}"></div>
-          <div>
-            <div style="font-weight:700">${p.name}</div>
-            <div style="font-size:.75rem;color:var(--text-3)">${p.bg} / ${p.border} / ${p.text}</div>
-          </div>
+          <div class="swatch-name">${p.name}</div>
         `;
         const select = ()=>{
           colorChoice = { type:"palette", id:p.id };
@@ -993,7 +990,7 @@
     function setColorTab(tab){
       [...colorTabs].forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
       palettePanel.style.display = tab==="palettes" ? "block":"none";
-      customPanel.style.display = tab==="custom" ? "grid":"none";
+      customPanel.style.display = tab==="custom" ? "block":"none";
     }
 
     function openClassModal(cls=null){
