@@ -1,6 +1,6 @@
 // Cache-busting: bump this string on every release so old (possibly buggy)
 // cached assets are purged and fresh ones are fetched.
-const CACHE = "schedule-maker-v4";
+const CACHE = "schedule-maker-v5";
 
 const ASSETS = [
   "./",
