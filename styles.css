@@ -27,8 +27,11 @@
     html.dark .backdrop{
       background:rgba(0,0,0,.6);
     }
+    html.dark .agenda-item{
+      background:var(--cbg,var(--surface));
+    }
     html.dark .agenda-time{
-      background:#1e293b;
+      background:var(--cbg,var(--surface));
     }
 
     *{box-sizing:border-box}

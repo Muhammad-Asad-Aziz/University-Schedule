@@ -867,6 +867,7 @@
         for(const cls of items){
           const row = document.createElement("div");
           row.className = "agenda-item";
+          row.style.cssText += classStyle(cls.color);
           row.dataset.id = cls.id;
           row.draggable = true;
           row.tabIndex = 0;
