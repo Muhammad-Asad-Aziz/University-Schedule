@@ -17,14 +17,30 @@
     );
 
     const PALETTES = [
-      { id:"orange", name:"Orange", bg:"#fff4e5", border:"#ff9800", text:"#e65100" },
-      { id:"blue",   name:"Blue",   bg:"#e3f2fd", border:"#2196f3", text:"#0d47a1" },
-      { id:"green",  name:"Green",  bg:"#e8f5e9", border:"#4caf50", text:"#1b5e20" },
-      { id:"purple", name:"Purple", bg:"#f3e5f5", border:"#9c27b0", text:"#4a148c" },
-      { id:"red",    name:"Red",    bg:"#ffebee", border:"#f44336", text:"#b71c1c" },
-      { id:"teal",   name:"Teal",   bg:"#e0f2f1", border:"#009688", text:"#004d40" },
-      { id:"amber",  name:"Amber",  bg:"#fffde7", border:"#fbc02d", text:"#f57f17" },
-      { id:"gray",   name:"Gray",   bg:"#f3f4f6", border:"#9ca3af", text:"#374151" },
+      { id:"blue",     name:"Blue",     bg:"#e3f2fd", border:"#2196f3", text:"#0d47a1" },
+      { id:"indigo",   name:"Indigo",   bg:"#e0e7ff", border:"#6366f1", text:"#3730a3" },
+      { id:"sky",      name:"Sky",      bg:"#e0f2fe", border:"#0ea5e9", text:"#075985" },
+      { id:"cyan",     name:"Cyan",     bg:"#e0f7fa", border:"#00bcd4", text:"#006064" },
+      { id:"teal",     name:"Teal",     bg:"#e0f2f1", border:"#009688", text:"#004d40" },
+      { id:"mint",     name:"Mint",     bg:"#e6fffa", border:"#2dd4bf", text:"#115e59" },
+      { id:"green",    name:"Green",    bg:"#e8f5e9", border:"#4caf50", text:"#1b5e20" },
+      { id:"emerald",  name:"Emerald",  bg:"#d1fae5", border:"#10b981", text:"#065f46" },
+      { id:"lime",     name:"Lime",     bg:"#ecfccb", border:"#84cc16", text:"#3f6212" },
+      { id:"yellow",   name:"Yellow",   bg:"#fef9c3", border:"#eab308", text:"#854d0e" },
+      { id:"amber",    name:"Amber",    bg:"#fffde7", border:"#fbc02d", text:"#f57f17" },
+      { id:"orange",   name:"Orange",   bg:"#fff4e5", border:"#ff9800", text:"#e65100" },
+      { id:"coral",    name:"Coral",    bg:"#ffedd5", border:"#f97316", text:"#9a3412" },
+      { id:"peach",    name:"Peach",    bg:"#fff0e6", border:"#ff8a65", text:"#bf360c" },
+      { id:"red",      name:"Red",      bg:"#ffebee", border:"#f44336", text:"#b71c1c" },
+      { id:"rose",     name:"Rose",     bg:"#ffe4e6", border:"#f43f5e", text:"#9f1239" },
+      { id:"pink",     name:"Pink",     bg:"#fce7f3", border:"#ec4899", text:"#9d174d" },
+      { id:"fuchsia",  name:"Fuchsia",  bg:"#fae8ff", border:"#d946ef", text:"#86198f" },
+      { id:"purple",   name:"Purple",   bg:"#f3e5f5", border:"#9c27b0", text:"#4a148c" },
+      { id:"violet",   name:"Violet",   bg:"#ede9fe", border:"#8b5cf6", text:"#5b21b6" },
+      { id:"lavender", name:"Lavender", bg:"#f3f0ff", border:"#a855f7", text:"#6b21a8" },
+      { id:"brown",    name:"Brown",    bg:"#f5ebe0", border:"#8d6e63", text:"#4e342e" },
+      { id:"gray",     name:"Gray",     bg:"#f3f4f6", border:"#9ca3af", text:"#374151" },
+      { id:"slate",    name:"Slate",    bg:"#f1f5f9", border:"#64748b", text:"#1e293b" },
     ];
 
     const STORAGE_KEY = "scheduleMaker.profiles.v1";
@@ -941,27 +957,40 @@
         const el = document.createElement("div");
         el.className = "swatch";
         el.dataset.id = p.id;
+        el.tabIndex = 0;
+        el.setAttribute("role", "button");
+        el.setAttribute("aria-label", `${p.name} palette`);
         el.innerHTML = `
           <div class="preview" style="background:${p.bg};color:${p.border}"></div>
-          <div>
-            <div style="font-weight:700">${p.name}</div>
-            <div style="font-size:.75rem;color:var(--text-3)">${p.bg} / ${p.border} / ${p.text}</div>
-          </div>
+          <div class="swatch-name">${p.name}</div>
         `;
-        el.addEventListener("click", ()=>{
+        const select = ()=>{
           colorChoice = { type:"palette", id:p.id };
-          // visual select (border highlight)
-          [...paletteSwatches.children].forEach(c=> c.style.outline="none");
-          el.style.outline = `2px solid var(--accent)`;
+          highlightActiveSwatch();
+        };
+        el.addEventListener("click", select);
+        el.addEventListener("keydown", e=>{
+          if(e.key==="Enter" || e.key===" "){ e.preventDefault(); select(); }
         });
         paletteSwatches.appendChild(el);
+      });
+      highlightActiveSwatch();
+    }
+
+    function highlightActiveSwatch(){
+      if(!paletteSwatches) return;
+      [...paletteSwatches.children].forEach(c=>{
+        const isSelected = (c.dataset.id === colorChoice.id);
+        c.style.outline = isSelected ? `2px solid var(--accent)` : "none";
+        c.classList.toggle("selected", isSelected);
+        c.setAttribute("aria-selected", isSelected ? "true" : "false");
       });
     }
 
     function setColorTab(tab){
       [...colorTabs].forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
       palettePanel.style.display = tab==="palettes" ? "block":"none";
-      customPanel.style.display = tab==="custom" ? "grid":"none";
+      customPanel.style.display = tab==="custom" ? "block":"none";
     }
 
     function openClassModal(cls=null){
@@ -994,7 +1023,7 @@
       }else{
         colorChoice = { type:"palette", id: (cls?.color?.id || "blue") };
         setColorTab("palettes");
-        [...paletteSwatches.children].forEach(c=> c.style.outline = (c.dataset.id===colorChoice.id) ? `2px solid var(--accent)` : "none");
+        highlightActiveSwatch();
       }
     }
 

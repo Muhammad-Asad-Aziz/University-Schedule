@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.min.css" />
+  <link rel="stylesheet" href="styles.min.css?v=3" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -75,37 +75,41 @@
       <h2 id="classModalTitle">Add class</h2>
       <div class="form" id="classForm">
         <input type="hidden" id="classId" />
-        <label>
-          Day
-          <select id="classDay"></select>
-        </label>
-        <label>
-          Start time
-          <select id="classStart"></select>
-        </label>
-        <label>
-          End time
-          <select id="classEnd"></select>
-        </label>
+
+        <div class="full form-row-top">
+          <label>
+            Day
+            <select id="classDay"></select>
+          </label>
+          <label>
+            Start time
+            <select id="classStart"></select>
+          </label>
+          <label>
+            End time
+            <select id="classEnd"></select>
+          </label>
+        </div>
+
         <label class="full">
           Name + Section
-          <input type="text" id="classCode" placeholder="e.g., LNG321 S32" />
+          <input type="text" id="classCode" placeholder="e.g. LNG321 S32" />
         </label>
         <label class="full">
-          Sub-title <span class="hint">(optional — e.g., Big Data Engineering)</span>
-          <input type="text" id="classSubtitle" placeholder="e.g., Big Data Engineering" maxlength="120" />
+          Sub-title <span class="hint">(optional)</span>
+          <input type="text" id="classSubtitle" placeholder="e.g. Big Data Engineering" maxlength="120" />
         </label>
         <label>
           Location
-          <input type="text" id="classLocation" placeholder="e.g., CB1301" />
+          <input type="text" id="classLocation" placeholder="e.g. CB1301" />
         </label>
         <label>
           Professor(s)
-          <input type="text" id="classInstructor" placeholder="e.g., RACHANEE" />
+          <input type="text" id="classInstructor" placeholder="e.g. RACHANEE" />
         </label>
 
         <div class="full">
-          <div style="font-weight:700;margin-top:6px">Color</div>
+          <div style="font-weight:700;margin-top:4px;font-size:0.9rem">Color</div>
           <div class="color-tabs">
             <button type="button" class="colorTab active" data-tab="palettes">Palettes</button>
             <button type="button" class="colorTab" data-tab="custom">Custom</button>
@@ -113,19 +117,21 @@
           <div id="palettePanel">
             <div class="swatches" id="paletteSwatches"></div>
           </div>
-          <div id="customPanel" style="display:none;margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-            <label>
-              Background
-              <input type="color" id="customBg" value="#e3f2fd" />
-            </label>
-            <label>
-              Border (left)
-              <input type="color" id="customBorder" value="#2196f3" />
-            </label>
-            <label>
-              Text
-              <input type="color" id="customText" value="#0d47a1" />
-            </label>
+          <div id="customPanel" style="display:none;margin-top:8px">
+            <div class="custom-colors-grid">
+              <label>
+                Background
+                <input type="color" id="customBg" value="#e3f2fd" />
+              </label>
+              <label>
+                Border (left)
+                <input type="color" id="customBorder" value="#2196f3" />
+              </label>
+              <label>
+                Text
+                <input type="color" id="customText" value="#0d47a1" />
+              </label>
+            </div>
           </div>
         </div>
       </div>
@@ -225,10 +231,10 @@
     </div>
   </div>
 
-  <div style="text-align:center; padding:12px 0; color:var(--text-3); font-size:0.85rem;">V1.0.9</div>
+  <div style="text-align:center; padding:12px 0; color:var(--text-3); font-size:0.85rem;">V1.1.0</div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="app.min.js" defer></script>
+  <script src="app.min.js?v=3" defer></script>
 </body>
 </html>
