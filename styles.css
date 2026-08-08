@@ -232,8 +232,8 @@
     .backdrop{position:absolute;inset:0;background:rgba(0,0,0,.3)}
     .dialog{
       position:relative;background:var(--surface);border:1px solid var(--border);border-radius:12px;
-      width: min(580px, calc(100% - 24px)); max-height: calc(100dvh - 32px); overflow-y: auto; overflow-x: hidden;
-      padding:16px 18px; z-index:1; box-sizing: border-box;
+      width: min(540px, calc(100% - 16px)); margin: auto; max-height: calc(100dvh - 24px); overflow-y: auto; overflow-x: hidden;
+      padding:16px 18px; z-index:1; box-sizing: border-box; min-width: 0;
     }
     .dialog h2{margin:0 0 12px 0;font-size:1.1rem}
     .form{
