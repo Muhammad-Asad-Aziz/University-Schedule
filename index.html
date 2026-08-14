@@ -14,39 +14,75 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.min.css?v=3" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.min.css?v=5" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="app">
-    <header>
-      <div class="title">Schedule Maker</div>
-      <div class="controls">
-        <span id="syncStatusBadge" class="sync-status status-offline" title="Sync Status">Offline</span>
-        <button id="accountBtn" class="account-btn" title="Account / Sync">Sign in</button>
-        <select id="profileSelect" title="Profiles"></select>
-        <button id="newProfileBtn">New</button>
-        <button id="renameProfileBtn">Rename</button>
-        <button id="duplicateProfileBtn">Duplicate</button>
-        <button id="deleteProfileBtn" class="danger">Delete</button>
-        <button id="addClassBtn" class="primary" title="Add class (A)">Add class</button>
-        <button id="importBtn" title="Import schedule (I)">Import</button>
-        <button id="exportBtn" title="Export schedules (E)">Export</button>
-        <button id="installBtn" class="install" hidden>Install app</button>
-        <button id="shortcutsBtn" class="icon-btn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
-        <input id="importFile" type="file" accept="application/json,.json" hidden />
-        <label class="toggle">
-          <input type="checkbox" id="timeFormatToggle" />
-          <span>24h</span>
-        </label>
-        <label class="toggle">
-          <input type="checkbox" id="weekendToggle" />
-          <span>Show Sat/Sun</span>
-        </label>
-        <label class="toggle">
-          <input type="checkbox" id="darkModeToggle" />
-          <span>🌙 Dark</span>
-        </label>
+    <header class="navbar navbar-expand-lg navbar-light bg-body rounded-3 border px-3 py-2">
+      <div class="container-fluid p-0">
+        <!-- Left: Title + Profile Dropdown -->
+        <div class="d-flex align-items-center gap-2">
+          <span class="navbar-brand mb-0 h5 fw-bold">Schedule Maker</span>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="profileDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Profile actions">
+              Profile
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="profileDropdownBtn">
+              <li><select id="profileSelect" class="dropdown-item-text w-100" style="min-width:180px;" title="Profiles"></select></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><button id="newProfileBtn" class="dropdown-item">New Profile</button></li>
+              <li><button id="renameProfileBtn" class="dropdown-item">Rename</button></li>
+              <li><button id="duplicateProfileBtn" class="dropdown-item">Duplicate</button></li>
+              <li><button id="deleteProfileBtn" class="dropdown-item text-danger">Delete</button></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Center: Sync Status -->
+        <div class="d-none d-lg-flex">
+          <span id="syncStatusBadge" class="sync-status status-offline badge rounded-pill" title="Sync Status">Offline</span>
+        </div>
+
+        <!-- Right: Actions + Settings -->
+        <div class="d-flex align-items-center gap-2">
+          <button id="accountBtn" class="btn btn-sm btn-outline-primary" title="Account / Sync">Sign in</button>
+          <button id="addClassBtn" class="btn btn-sm btn-primary" title="Add class (A)">Add class</button>
+          <button id="importBtn" class="btn btn-sm btn-outline-secondary" title="Import schedule (I)">Import</button>
+          <button id="exportBtn" class="btn btn-sm btn-outline-secondary" title="Export schedules (E)">Export</button>
+          <button id="installBtn" class="btn btn-sm btn-success" hidden>Install app</button>
+          
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary" type="button" id="settingsDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Settings">
+              Settings
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="settingsDropdownBtn">
+              <li class="px-3 py-2">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="timeFormatToggle" />
+                  <label class="form-check-label" for="timeFormatToggle">24-hour format</label>
+                </div>
+              </li>
+              <li class="px-3 py-2">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="weekendToggle" />
+                  <label class="form-check-label" for="weekendToggle">Show weekends</label>
+                </div>
+              </li>
+              <li class="px-3 py-2">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="darkModeToggle" />
+                  <label class="form-check-label" for="darkModeToggle">Dark mode</label>
+                </div>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li><button id="shortcutsBtn" class="dropdown-item">Keyboard shortcuts</button></li>
+            </ul>
+          </div>
+          
+          <input id="importFile" type="file" accept="application/json,.json" hidden />
+        </div>
       </div>
     </header>
 
@@ -235,6 +271,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="app.min.js?v=3" defer></script>
 </body>
 </html>

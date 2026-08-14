@@ -7,6 +7,8 @@
       --text-2:#374151;
       --text-3:#6b7280;
       --accent:#2563eb;
+      --toggle-off-bg:#dc3545;
+      --toggle-on-bg:#198754;
     }
 
     /* ---- Dark Mode ---- */
@@ -498,4 +500,63 @@ html.dark .auth-msg.error {
   font-size: 0.8rem;
   color: var(--text-2);
   font-weight: normal;
+}
+
+/* ---- Bootstrap Toggle Switch Custom Styling ---- */
+.form-check-input[type="checkbox"] {
+  width: 3em;
+  height: 1.6em;
+  cursor: pointer;
+  transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.15s ease;
+}
+
+.form-check-input:not(:checked) {
+  background-color: var(--toggle-off-bg) !important;
+  border-color: var(--toggle-off-bg) !important;
+  opacity: 0.7;
+}
+
+.form-check-input:checked {
+  background-color: var(--toggle-on-bg) !important;
+  border-color: var(--toggle-on-bg) !important;
+  opacity: 1;
+}
+
+.form-check-input:focus {
+  box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+  border-color: var(--toggle-on-bg);
+}
+
+.form-check-input:not(:checked):focus {
+  box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+  border-color: var(--toggle-off-bg);
+}
+
+.form-check-input:active {
+  transform: scale(0.95);
+}
+
+.form-check-label {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text-2);
+  cursor: pointer;
+  margin-left: 0.5em;
+  transition: color 0.2s ease;
+}
+
+.form-check-label:hover {
+  color: var(--text);
+}
+
+/* Dark mode adjustments for toggles */
+html.dark .form-check-input:not(:checked) {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  opacity: 0.8;
+}
+
+html.dark .form-check-input:checked {
+  background-color: #22c55e !important;
+  border-color: #22c55e !important;
 }
