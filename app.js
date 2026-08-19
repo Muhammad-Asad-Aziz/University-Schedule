@@ -737,7 +737,7 @@
       if(newStart){
         const duration = toMinutes(cls.end) - toMinutes(cls.start);
         let start = toMinutes(newStart);
-        start = Math.min(start, END_MIN - duration);
+        start = Math.max(START_MIN, Math.min(start, END_MIN - duration));
         cls.start = minutesToHHMM(start);
         cls.end = minutesToHHMM(start + duration);
       }
@@ -761,6 +761,66 @@
         element.classList.remove("drop-target");
         const id = draggedClassId || event.dataTransfer.getData("text/plain");
         if(id) moveClass(id, day, start);
+      });
+    }
+
+    function isClassCurrent(cls){
+      if(!cls || !cls.start || !cls.end) return false;
+      const now = new Date();
+      const jsDay = now.getDay();
+      const currentDay = jsDay === 0 ? 7 : jsDay;
+      if(Number(cls.day) !== currentDay) return false;
+      const currentMins = now.getHours() * 60 + now.getMinutes();
+      const startMins = toMinutes(cls.start);
+      const endMins = toMinutes(cls.end);
+      if(!Number.isFinite(startMins) || !Number.isFinite(endMins)) return false;
+      return currentMins >= startMins && currentMins < endMins;
+    }
+
+    function updateCurrentClassHighlight(){
+      const prof = profiles[activeProfileId];
+      if(!prof) return;
+
+      const currentIds = new Set(prof.classes.filter(isClassCurrent).map(c=>c.id));
+
+      // Update grid blocks
+      gridEl.querySelectorAll(".class-block").forEach(block=>{
+        const id = block.dataset.id;
+        const shouldBeCurrent = currentIds.has(id);
+        const isNow = block.classList.contains("is-current");
+        if(shouldBeCurrent !== isNow){
+          block.classList.toggle("is-current", shouldBeCurrent);
+          const codeRow = block.querySelector(".class-code-row");
+          const existingBadge = block.querySelector(".current-badge");
+          if(shouldBeCurrent && !existingBadge && codeRow){
+            const badge = document.createElement("span");
+            badge.className = "current-badge";
+            badge.innerHTML = '<span class="pulse-dot"></span>NOW';
+            codeRow.appendChild(badge);
+          } else if(!shouldBeCurrent && existingBadge){
+            existingBadge.remove();
+          }
+        }
+      });
+
+      // Update agenda items
+      agendaEl.querySelectorAll(".agenda-item").forEach(item=>{
+        const id = item.dataset.id;
+        const shouldBeCurrent = currentIds.has(id);
+        const isNow = item.classList.contains("is-current");
+        if(shouldBeCurrent !== isNow){
+          item.classList.toggle("is-current", shouldBeCurrent);
+          const codeRow = item.querySelector(".agenda-code-row");
+          const existingBadge = item.querySelector(".current-badge");
+          if(shouldBeCurrent && !existingBadge && codeRow){
+            const badge = document.createElement("span");
+            badge.className = "current-badge";
+            badge.innerHTML = '<span class="pulse-dot"></span>NOW';
+            codeRow.appendChild(badge);
+          } else if(!shouldBeCurrent && existingBadge){
+            existingBadge.remove();
+          }
+        }
       });
     }
 
@@ -812,8 +872,9 @@
         const eIdx = Math.max(0, Math.min(SLOTS.length, Math.round((end-START_MIN)/SLOT)));
         if(eIdx <= sIdx) continue;
 
+        const isCurrent = isClassCurrent(cls);
         const block = document.createElement("div");
-        block.className = "class-block";
+        block.className = "class-block" + (isCurrent ? " is-current" : "");
         block.style.gridRow = r;
         block.style.gridColumn = (sIdx+2) + " / " + (eIdx+2);
         block.style.cssText += classStyle(cls.color);
@@ -821,16 +882,27 @@
         block.draggable = true;
         block.tabIndex = 0;
         block.setAttribute("role", "button");
-        block.setAttribute("aria-label", `${cls.code}, ${DAYS[cls.day-1]}, ${cls.start} to ${cls.end}. Drag to move or press Enter to edit.`);
+        block.setAttribute("aria-label", `${cls.code}${isCurrent ? " (Current class)" : ""}, ${DAYS[cls.day-1]}, ${cls.start} to ${cls.end}. Drag to move or press Enter to edit.`);
         block.addEventListener("dragstart", event=>beginDrag(event, cls));
         block.addEventListener("dragend", endDrag);
         block.addEventListener("keydown", event=>{
           if(event.key==="Enter" || event.key===" "){ event.preventDefault(); openClassModal(cls); }
         });
 
+        const codeRow = document.createElement("div");
+        codeRow.className = "class-code-row";
+
         const code = document.createElement("div");
         code.className="class-code";
         code.textContent = cls.code;
+        codeRow.appendChild(code);
+
+        if(isCurrent){
+          const badge = document.createElement("span");
+          badge.className = "current-badge";
+          badge.innerHTML = '<span class="pulse-dot"></span>NOW';
+          codeRow.appendChild(badge);
+        }
 
         const sub1 = document.createElement("div");
         sub1.className = "class-sub";
@@ -842,7 +914,7 @@
         sub2.style.cssText += classStyle(cls.color); // colorise professor
         sub2.textContent = cls.instructor;
 
-        block.appendChild(code);
+        block.appendChild(codeRow);
         if (cls.subtitle) {
           const subTitle = document.createElement("div");
           subTitle.className = "class-subtitle";
@@ -881,14 +953,15 @@
         }
 
         for(const cls of items){
+          const isCurrent = isClassCurrent(cls);
           const row = document.createElement("div");
-          row.className = "agenda-item";
+          row.className = "agenda-item" + (isCurrent ? " is-current" : "");
           row.style.cssText += classStyle(cls.color);
           row.dataset.id = cls.id;
           row.draggable = true;
           row.tabIndex = 0;
           row.setAttribute("role", "button");
-          row.setAttribute("aria-label", `${cls.code}, ${day.name}, ${cls.start} to ${cls.end}. Drag to another day or press Enter to edit.`);
+          row.setAttribute("aria-label", `${cls.code}${isCurrent ? " (Current class)" : ""}, ${day.name}, ${cls.start} to ${cls.end}. Drag to another day or press Enter to edit.`);
           row.addEventListener("dragstart", event=>beginDrag(event, cls));
           row.addEventListener("dragend", endDrag);
           row.addEventListener("click", ()=>openClassModal(cls));
@@ -909,10 +982,23 @@
 
           const content = document.createElement("div");
           content.className = "agenda-content";
+
+          const codeRow = document.createElement("div");
+          codeRow.className = "agenda-code-row";
+
           const code = document.createElement("div");
           code.className = "code";
           code.style.cssText = classStyle(cls.color) + "color:var(--ctx)";
           code.textContent = cls.code;
+          codeRow.appendChild(code);
+
+          if(isCurrent){
+            const badge = document.createElement("span");
+            badge.className = "current-badge";
+            badge.innerHTML = '<span class="pulse-dot"></span>NOW';
+            codeRow.appendChild(badge);
+          }
+
           let subtitleEl = null;
           if (cls.subtitle) {
             subtitleEl = document.createElement("div");
@@ -929,7 +1015,7 @@
             span.textContent = text;
             meta.appendChild(span);
           }
-          content.append(code);
+          content.append(codeRow);
           if (subtitleEl) content.appendChild(subtitleEl);
           content.append(meta);
           row.append(time, content);
@@ -1231,6 +1317,13 @@
           syncWithCloud();
         }
       }, 15000);
+
+      // Periodic check every 15 seconds to update active class glow in real-time
+      setInterval(updateCurrentClassHighlight, 15000);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) updateCurrentClassHighlight();
+      });
+      window.addEventListener("focus", updateCurrentClassHighlight);
 
       profileSelect.addEventListener("change", e=> setActiveProfile(e.target.value));
       newProfileBtn.addEventListener("click", ()=> createProfile("New Profile"));
