@@ -16,6 +16,8 @@
       (_, i) => (START_MIN + i * SLOT) % (24 * 60) // modulo 24h to get display times
     );
 
+    const VALID_BADGES = ["Major", "General", "Math", "Science"];
+
     const PALETTES = [
       { id:"blue",     name:"Blue",     bg:"#e3f2fd", border:"#2196f3", text:"#0d47a1" },
       { id:"indigo",   name:"Indigo",   bg:"#e0e7ff", border:"#6366f1", text:"#3730a3" },
@@ -46,6 +48,10 @@
     const STORAGE_KEY = "scheduleMaker.profiles.v1";
     const ACTIVE_KEY  = "scheduleMaker.activeProfile.v1";
     const PREFS_KEY   = "scheduleMaker.prefs.v1"; // global prefs like time format
+    const STORAGE_EXAMS_KEY = "scheduleMaker.exams.v1";
+
+    let exams = [];
+    let activeMainTab = "schedule";
 
     const SUPABASE_URL = "https://wjvaqdldinuqwcnrkdby.supabase.co";
     // Verified anon/public key (decoded `ref` matches SUPABASE_URL exactly, valid to 2036).
@@ -79,6 +85,16 @@
 
     function genId(){ return Math.random().toString(36).slice(2,10); }
 
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
     // --------- Dark Mode ---------
     function applyDarkMode(){
       document.documentElement.classList.toggle("dark", !!prefs.darkMode);
@@ -88,7 +104,7 @@
     // --------- State ---------
     let profiles = {};    // {id: {id, name, classes:[...]} }
     let activeProfileId = null;
-    let prefs = { time24: true, darkMode: false, showWeekends: false };
+    let prefs = { time24: false, darkMode: false, showWeekends: false };
 
     // Preload default "Computer Engineering" profile from the provided schedule
     function defaultProfiles(){
@@ -97,15 +113,15 @@
         name: "Computer Engineering",
         classes: [
           // day: 1=Mon..7=Sun
-          { id:genId(), day:1, start:"09:30", end:"12:30", code:"LNG321 S2",   subtitle:"English for Engineering", location:"CB1301",            instructor:"RACHANEE",         color:{type:"palette", id:"orange"} },
-          { id:genId(), day:2, start:"08:30", end:"10:00", code:"MTH234 S31",  subtitle:"Differential Equations", location:"CB2505",            instructor:"Songpon",          color:{type:"palette", id:"green"} },
-          { id:genId(), day:2, start:"10:30", end:"12:30", code:"PHY10401 S31",subtitle:"Physics for Engineers",   location:"SC2110",            instructor:"Tanapat, Thana",   color:{type:"palette", id:"purple"} },
-          { id:genId(), day:2, start:"13:30", end:"17:30", code:"CPE231 S31",  subtitle:"Big Data Engineering",   location:"CPE1121",           instructor:"Peerapon",         color:{type:"palette", id:"blue"} },
-          { id:genId(), day:3, start:"10:30", end:"12:30", code:"GEN101 S40",  subtitle:"Physical Education",     location:"GYM (KFC 3rd Floor)",instructor:"Nanthanan",        color:{type:"palette", id:"red"} },
-          { id:genId(), day:3, start:"13:30", end:"16:30", code:"GEN231 S35",  subtitle:"Digital Literacy",       location:"ONLINE",            instructor:"Suthidee",         color:{type:"palette", id:"teal"} },
-          { id:genId(), day:4, start:"08:30", end:"12:30", code:"CPE222 S32",  subtitle:"Computer Organization",  location:"LIB108",            instructor:"Suthatip, Pongsagon", color:{type:"palette", id:"amber"} },
-          { id:genId(), day:5, start:"08:30", end:"10:00", code:"MTH234 S31",  subtitle:"Differential Equations", location:"CB2505",            instructor:"Songpon",          color:{type:"palette", id:"green"} },
-          { id:genId(), day:5, start:"11:30", end:"12:30", code:"PHY10401 S31",subtitle:"Physics for Engineers",   location:"SC2110",            instructor:"Tanapat, Thana",   color:{type:"palette", id:"purple"} },
+          { id:genId(), day:1, start:"09:30", end:"12:30", code:"LNG321 S2",   subtitle:"English for Engineering", location:"CB1301",            instructor:"RACHANEE",         color:{type:"palette", id:"orange"}, badge:"General" },
+          { id:genId(), day:2, start:"08:30", end:"10:00", code:"MTH234 S31",  subtitle:"Differential Equations", location:"CB2505",            instructor:"Songpon",          color:{type:"palette", id:"green"},  badge:"Math" },
+          { id:genId(), day:2, start:"10:30", end:"12:30", code:"PHY10401 S31",subtitle:"Physics for Engineers",   location:"SC2110",            instructor:"Tanapat, Thana",   color:{type:"palette", id:"purple"}, badge:"Science" },
+          { id:genId(), day:2, start:"13:30", end:"17:30", code:"CPE231 S31",  subtitle:"Big Data Engineering",   location:"CPE1121",           instructor:"Peerapon",         color:{type:"palette", id:"blue"},   badge:"Major" },
+          { id:genId(), day:3, start:"10:30", end:"12:30", code:"GEN101 S40",  subtitle:"Physical Education",     location:"GYM (KFC 3rd Floor)",instructor:"Nanthanan",        color:{type:"palette", id:"red"},    badge:"General" },
+          { id:genId(), day:3, start:"13:30", end:"16:30", code:"GEN231 S35",  subtitle:"Digital Literacy",       location:"ONLINE",            instructor:"Suthidee",         color:{type:"palette", id:"teal"},   badge:"General" },
+          { id:genId(), day:4, start:"08:30", end:"12:30", code:"CPE222 S32",  subtitle:"Computer Organization",  location:"LIB108",            instructor:"Suthatip, Pongsagon", color:{type:"palette", id:"amber"}, badge:"Major" },
+          { id:genId(), day:5, start:"08:30", end:"10:00", code:"MTH234 S31",  subtitle:"Differential Equations", location:"CB2505",            instructor:"Songpon",          color:{type:"palette", id:"green"},  badge:"Math" },
+          { id:genId(), day:5, start:"11:30", end:"12:30", code:"PHY10401 S31",subtitle:"Physics for Engineers",   location:"SC2110",            instructor:"Tanapat, Thana",   color:{type:"palette", id:"purple"}, badge:"Science" },
         ]
       };
       const blank = { id: genId(), name:"Blank", classes: [] };
@@ -118,19 +134,53 @@
       try{
         profiles = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
         activeProfileId = localStorage.getItem(ACTIVE_KEY);
-        prefs = JSON.parse(localStorage.getItem(PREFS_KEY)) || { time24: true, darkMode: false, showWeekends: false };
+        prefs = JSON.parse(localStorage.getItem(PREFS_KEY)) || { time24: false, darkMode: false, showWeekends: false };
+        if(prefs.time24 === undefined) prefs.time24 = false;
         if(prefs.darkMode === undefined) prefs.darkMode = false;
         if(prefs.showWeekends === undefined) prefs.showWeekends = false;
-      }catch{ profiles={}; activeProfileId=null; prefs={ time24:true, darkMode:false, showWeekends:false }; }
+      }catch{ profiles={}; activeProfileId=null; prefs={ time24:false, darkMode:false, showWeekends:false }; }
       if(Object.keys(profiles).length===0){
         profiles = defaultProfiles();
         const first = Object.values(profiles).find(p=>p.name==="Blank") || Object.values(profiles)[0];
         activeProfileId = first.id;
         save();
+      } else {
+        const BADGES_MIGRATED_KEY = "scheduleMaker.badgesMigrated.v1";
+        if (!localStorage.getItem(BADGES_MIGRATED_KEY)) {
+          // One-time upgrade for initial preloaded CE classes if they lack badges
+          const defaultBadgesByCode = {
+            "LNG": "General",
+            "GEN": "General",
+            "MTH": "Math",
+            "PHY": "Science",
+            "CPE": "Major"
+          };
+          let updated = false;
+          Object.values(profiles).forEach(p => {
+            if (p && Array.isArray(p.classes)) {
+              p.classes.forEach(c => {
+                if (!c.badge && p.name && p.name.includes("Computer Engineering")) {
+                  for (const [prefix, badgeName] of Object.entries(defaultBadgesByCode)) {
+                    if (c.code && c.code.toUpperCase().includes(prefix)) {
+                      c.badge = badgeName;
+                      updated = true;
+                      break;
+                    }
+                  }
+                }
+              });
+            }
+          });
+          if (updated) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+          }
+          localStorage.setItem(BADGES_MIGRATED_KEY, "true");
+        }
       }
       if(!profiles[activeProfileId]){
         activeProfileId = Object.keys(profiles)[0];
       }
+      loadExams();
     }
     function save(){
       localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
@@ -159,6 +209,7 @@
     const duplicateProfileBtn = document.getElementById("duplicateProfileBtn");
     const deleteProfileBtn = document.getElementById("deleteProfileBtn");
     const addClassBtn = document.getElementById("addClassBtn");
+    const badgeFilterSelect = document.getElementById("badgeFilterSelect");
     const timeFormatToggle = document.getElementById("timeFormatToggle");
     const weekendToggle = document.getElementById("weekendToggle");
     const darkModeToggle = document.getElementById("darkModeToggle");
@@ -193,6 +244,56 @@
     const choiceUseCloudBtn = document.getElementById("choiceUseCloudBtn");
     const choiceMergeBtn = document.getElementById("choiceMergeBtn");
 
+    // Main Tabs & Content
+    const tabScheduleBtn = document.getElementById("tabScheduleBtn");
+    const tabExamsBtn = document.getElementById("tabExamsBtn");
+    const scheduleTabContent = document.getElementById("scheduleTabContent");
+    const examsTabContent = document.getElementById("examsTabContent");
+    const scheduleControls = document.getElementById("scheduleControls");
+    const examCountBadge = document.getElementById("examCountBadge");
+
+    // Exam Tracker Elements
+    const examsSummaryText = document.getElementById("examsSummaryText");
+    const openExamImportBtn = document.getElementById("openExamImportBtn");
+    const clearExamsBtn = document.getElementById("clearExamsBtn");
+    const examTimeFormatToggle = document.getElementById("examTimeFormatToggle");
+    const nextExamBanner = document.getElementById("nextExamBanner");
+    const examsList = document.getElementById("examsList");
+    const examsEmptyState = document.getElementById("examsEmptyState");
+    const emptyImportBtn = document.getElementById("emptyImportBtn");
+    const loadSampleExamsBtn = document.getElementById("loadSampleExamsBtn");
+
+    // Exam Import Modal
+    const examImportModal = document.getElementById("examImportModal");
+    const rawExamText = document.getElementById("rawExamText");
+    const insertSampleRawBtn = document.getElementById("insertSampleRawBtn");
+    const cancelExamImportBtn = document.getElementById("cancelExamImportBtn");
+    const parseExamBtn = document.getElementById("parseExamBtn");
+
+    // Cheatsheet Modal
+    const cheatsheetModal = document.getElementById("cheatsheetModal");
+    const cheatsheetModalTitle = document.getElementById("cheatsheetModalTitle");
+    const cheatsheetModalSubtitle = document.getElementById("cheatsheetModalSubtitle");
+    const cheatsheetExamId = document.getElementById("cheatsheetExamId");
+    const cheatsheetCustomNote = document.getElementById("cheatsheetCustomNote");
+    const cancelCheatsheetBtn = document.getElementById("cancelCheatsheetBtn");
+    const saveCheatsheetBtn = document.getElementById("saveCheatsheetBtn");
+    let editingCheatsheetExamId = null;
+    let selectedCheatsheetStatus = "unset";
+    let selectedCheatsheetNote = "";
+
+    // Calculator Modal
+    const calculatorModal = document.getElementById("calculatorModal");
+    const calculatorModalTitle = document.getElementById("calculatorModalTitle");
+    const calculatorModalSubtitle = document.getElementById("calculatorModalSubtitle");
+    const calculatorExamId = document.getElementById("calculatorExamId");
+    const calculatorCustomNote = document.getElementById("calculatorCustomNote");
+    const cancelCalculatorBtn = document.getElementById("cancelCalculatorBtn");
+    const saveCalculatorBtn = document.getElementById("saveCalculatorBtn");
+    let editingCalculatorExamId = null;
+    let selectedCalculatorStatus = "unset";
+    let selectedCalculatorNote = "";
+
     // Modal
     const modal = document.getElementById("classModal");
     const backdrop = modal.querySelector(".backdrop");
@@ -205,6 +306,8 @@
     const subtitleInput = document.getElementById("classSubtitle");
     const locationInput = document.getElementById("classLocation");
     const instructorInput = document.getElementById("classInstructor");
+    const classBadgeInput = document.getElementById("classBadge");
+    const badgePicker = document.getElementById("badgePicker");
     const paletteSwatches = document.getElementById("paletteSwatches");
     const customBg = document.getElementById("customBg");
     const customBorder = document.getElementById("customBorder");
@@ -217,6 +320,7 @@
     const deleteClassBtn = document.getElementById("deleteClassBtn");
 
     let editingClass = null; // object reference in current profile
+    let activeBadgeFilter = "all";
     let colorChoice = { type:"palette", id:"blue" };
     let draggedClassId = null;
     let deferredInstallPrompt = null;
@@ -306,7 +410,8 @@
       return {
         profiles: profiles,
         activeProfileId: activeProfileId,
-        preferences: prefs
+        preferences: prefs,
+        exams: exams
       };
     }
 
@@ -322,6 +427,11 @@
       }
       if (cloudData.preferences && typeof cloudData.preferences === "object") {
         prefs = { ...prefs, ...cloudData.preferences };
+      }
+      if (Array.isArray(cloudData.exams)) {
+        exams = cloudData.exams;
+        localStorage.setItem(STORAGE_EXAMS_KEY, JSON.stringify(exams));
+        renderExams();
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
       localStorage.setItem(ACTIVE_KEY, activeProfileId);
@@ -396,10 +506,25 @@
         ...(localData.preferences || {})
       };
 
+      // Merge exams
+      const remoteExams = Array.isArray(remoteData.exams) ? remoteData.exams : [];
+      const localExams = Array.isArray(localData.exams) ? localData.exams : [];
+      const examMap = new Map();
+      for (const e of remoteExams) {
+        const key = e.id || `${e.code}_${e.rawDate}_${e.time}`;
+        examMap.set(key, e);
+      }
+      for (const e of localExams) {
+        const key = e.id || `${e.code}_${e.rawDate}_${e.time}`;
+        if (!examMap.has(key)) examMap.set(key, e);
+      }
+      const mergedExams = Array.from(examMap.values());
+
       return {
         profiles: mergedProfiles,
         activeProfileId: mergedActiveId,
-        preferences: mergedPrefs
+        preferences: mergedPrefs,
+        exams: mergedExams
       };
     }
 
@@ -790,13 +915,13 @@
         const isNow = block.classList.contains("is-current");
         if(shouldBeCurrent !== isNow){
           block.classList.toggle("is-current", shouldBeCurrent);
-          const codeRow = block.querySelector(".class-code-row");
+          const badgeWrap = block.querySelector(".class-badges-wrap") || block.querySelector(".class-code-row");
           const existingBadge = block.querySelector(".current-badge");
-          if(shouldBeCurrent && !existingBadge && codeRow){
+          if(shouldBeCurrent && !existingBadge && badgeWrap){
             const badge = document.createElement("span");
             badge.className = "current-badge";
             badge.innerHTML = '<span class="pulse-dot"></span>NOW';
-            codeRow.appendChild(badge);
+            badgeWrap.appendChild(badge);
           } else if(!shouldBeCurrent && existingBadge){
             existingBadge.remove();
           }
@@ -810,13 +935,13 @@
         const isNow = item.classList.contains("is-current");
         if(shouldBeCurrent !== isNow){
           item.classList.toggle("is-current", shouldBeCurrent);
-          const codeRow = item.querySelector(".agenda-code-row");
+          const badgeWrap = item.querySelector(".agenda-badges-wrap") || item.querySelector(".agenda-code-row");
           const existingBadge = item.querySelector(".current-badge");
-          if(shouldBeCurrent && !existingBadge && codeRow){
+          if(shouldBeCurrent && !existingBadge && badgeWrap){
             const badge = document.createElement("span");
             badge.className = "current-badge";
             badge.innerHTML = '<span class="pulse-dot"></span>NOW';
-            codeRow.appendChild(badge);
+            badgeWrap.appendChild(badge);
           } else if(!shouldBeCurrent && existingBadge){
             existingBadge.remove();
           }
@@ -873,8 +998,9 @@
         if(eIdx <= sIdx) continue;
 
         const isCurrent = isClassCurrent(cls);
+        const isDimmed = (activeBadgeFilter !== "all" && cls.badge !== activeBadgeFilter);
         const block = document.createElement("div");
-        block.className = "class-block" + (isCurrent ? " is-current" : "");
+        block.className = "class-block" + (isCurrent ? " is-current" : "") + (isDimmed ? " dimmed" : "");
         block.style.gridRow = r;
         block.style.gridColumn = (sIdx+2) + " / " + (eIdx+2);
         block.style.cssText += classStyle(cls.color);
@@ -882,7 +1008,7 @@
         block.draggable = true;
         block.tabIndex = 0;
         block.setAttribute("role", "button");
-        block.setAttribute("aria-label", `${cls.code}${isCurrent ? " (Current class)" : ""}, ${DAYS[cls.day-1]}, ${cls.start} to ${cls.end}. Drag to move or press Enter to edit.`);
+        block.setAttribute("aria-label", `${cls.code}${cls.badge ? ` (${cls.badge})` : ""}${isCurrent ? " (Current class)" : ""}, ${DAYS[cls.day-1]}, ${cls.start} to ${cls.end}. Drag to move or press Enter to edit.`);
         block.addEventListener("dragstart", event=>beginDrag(event, cls));
         block.addEventListener("dragend", endDrag);
         block.addEventListener("keydown", event=>{
@@ -897,12 +1023,24 @@
         code.textContent = cls.code;
         codeRow.appendChild(code);
 
+        const badgesWrap = document.createElement("div");
+        badgesWrap.className = "class-badges-wrap";
+
+        if(cls.badge){
+          const catBadge = document.createElement("span");
+          catBadge.className = `category-badge category-badge--${cls.badge.toLowerCase()}`;
+          catBadge.textContent = cls.badge;
+          badgesWrap.appendChild(catBadge);
+        }
+
         if(isCurrent){
           const badge = document.createElement("span");
           badge.className = "current-badge";
           badge.innerHTML = '<span class="pulse-dot"></span>NOW';
-          codeRow.appendChild(badge);
+          badgesWrap.appendChild(badge);
         }
+
+        codeRow.appendChild(badgesWrap);
 
         const sub1 = document.createElement("div");
         sub1.className = "class-sub";
@@ -954,14 +1092,15 @@
 
         for(const cls of items){
           const isCurrent = isClassCurrent(cls);
+          const isDimmed = (activeBadgeFilter !== "all" && cls.badge !== activeBadgeFilter);
           const row = document.createElement("div");
-          row.className = "agenda-item" + (isCurrent ? " is-current" : "");
+          row.className = "agenda-item" + (isCurrent ? " is-current" : "") + (isDimmed ? " dimmed" : "");
           row.style.cssText += classStyle(cls.color);
           row.dataset.id = cls.id;
           row.draggable = true;
           row.tabIndex = 0;
           row.setAttribute("role", "button");
-          row.setAttribute("aria-label", `${cls.code}${isCurrent ? " (Current class)" : ""}, ${day.name}, ${cls.start} to ${cls.end}. Drag to another day or press Enter to edit.`);
+          row.setAttribute("aria-label", `${cls.code}${cls.badge ? ` (${cls.badge})` : ""}${isCurrent ? " (Current class)" : ""}, ${day.name}, ${cls.start} to ${cls.end}. Drag to another day or press Enter to edit.`);
           row.addEventListener("dragstart", event=>beginDrag(event, cls));
           row.addEventListener("dragend", endDrag);
           row.addEventListener("click", ()=>openClassModal(cls));
@@ -992,12 +1131,24 @@
           code.textContent = cls.code;
           codeRow.appendChild(code);
 
+          const badgesWrap = document.createElement("div");
+          badgesWrap.className = "agenda-badges-wrap";
+
+          if(cls.badge){
+            const catBadge = document.createElement("span");
+            catBadge.className = `category-badge category-badge--${cls.badge.toLowerCase()}`;
+            catBadge.textContent = cls.badge;
+            badgesWrap.appendChild(catBadge);
+          }
+
           if(isCurrent){
             const badge = document.createElement("span");
             badge.className = "current-badge";
             badge.innerHTML = '<span class="pulse-dot"></span>NOW';
-            codeRow.appendChild(badge);
+            badgesWrap.appendChild(badge);
           }
+
+          codeRow.appendChild(badgesWrap);
 
           let subtitleEl = null;
           if (cls.subtitle) {
@@ -1028,12 +1179,14 @@
     function render(){
       renderProfileSelect();
       timeFormatToggle.checked = !!prefs.time24;
+      if (examTimeFormatToggle) examTimeFormatToggle.checked = !!prefs.time24;
       weekendToggle.checked = !!prefs.showWeekends;
       applyDarkMode();
       initDayOptions();
       initTimeOptions();
       buildGrid();
       buildAgenda();
+      renderExams();
     }
 
     // --------- Modal Logic ---------
@@ -1098,6 +1251,17 @@
       subtitleInput.value = cls?.subtitle || "";
       locationInput.value = cls?.location || "";
       instructorInput.value = cls?.instructor || "";
+
+      // Badge
+      const currentBadge = cls?.badge || "";
+      if(classBadgeInput) classBadgeInput.value = currentBadge;
+      if(badgePicker){
+        badgePicker.querySelectorAll(".badge-opt-btn").forEach(btn=>{
+          const isSel = (btn.dataset.badge === currentBadge);
+          btn.classList.toggle("active", isSel);
+          btn.setAttribute("aria-checked", isSel ? "true" : "false");
+        });
+      }
 
       // Color
       if(cls?.color?.type==="custom"){
@@ -1181,6 +1345,7 @@
       const subtitle = (subtitleInput.value||"").trim();
       const location = (locationInput.value||"").trim();
       const instructor = (instructorInput.value||"").trim();
+      const badge = (classBadgeInput ? classBadgeInput.value : "").trim();
 
       const err = validateTimes(start,end);
       if(err){ alert(err); return; }
@@ -1194,7 +1359,7 @@
         color = { type:"palette", id: colorChoice.id || "blue" };
       }
 
-      const payload = { id, day, start, end, code, subtitle, location, instructor, color };
+      const payload = { id, day, start, end, code, subtitle, location, instructor, color, badge };
 
       const idx = p.classes.findIndex(c=>c.id===id);
       if(idx>=0){ p.classes[idx] = payload; } else { p.classes.push(payload); }
@@ -1216,7 +1381,8 @@
         version: 1,
         exportedAt: new Date().toISOString(),
         profiles: Object.values(profiles),
-        preferences: prefs
+        preferences: prefs,
+        exams: exams
       };
       const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
       const link = document.createElement("a");
@@ -1243,7 +1409,37 @@
       if(item.color?.type==="custom" && isHex(item.color.bg) && isHex(item.color.border) && isHex(item.color.text)){
         color = {type:"custom", bg:item.color.bg, border:item.color.border, text:item.color.text};
       }
-      return {id:genId(), day, start, end, code:safeText(item.code), subtitle:safeText(item.subtitle).slice(0,120), location:safeText(item.location), instructor:safeText(item.instructor), color};
+      const badge = (typeof item.badge === "string" && VALID_BADGES.includes(item.badge.trim())) ? item.badge.trim() : "";
+      return {id:genId(), day, start, end, code:safeText(item.code), subtitle:safeText(item.subtitle).slice(0,120), location:safeText(item.location), instructor:safeText(item.instructor), color, badge};
+    }
+
+    function cleanImportedExam(item){
+      if(!item || typeof item !== "object") return null;
+      const safeText = value => String(value || "").slice(0, 200);
+      const code = safeText(item.code).trim();
+      if(!code) return null;
+      return {
+        id: item.id || genId(),
+        rawDate: safeText(item.rawDate),
+        formattedDate: safeText(item.formattedDate),
+        beYear: item.beYear ? Number(item.beYear) : null,
+        ceYear: item.ceYear ? Number(item.ceYear) : null,
+        timestamp: item.timestamp ? Number(item.timestamp) : 0,
+        time: safeText(item.time),
+        code,
+        title: safeText(item.title),
+        room: safeText(item.room),
+        seat: safeText(item.seat),
+        remark: safeText(item.remark),
+        weekday: safeText(item.weekday || ""),
+        formattedDateOnly: safeText(item.formattedDateOnly || ""),
+        cheatsheetStatus: safeText(item.cheatsheetStatus || "unset"),
+        cheatsheetNote: safeText(item.cheatsheetNote || ""),
+        calculatorStatus: safeText(item.calculatorStatus || "unset"),
+        calculatorNote: safeText(item.calculatorNote || ""),
+        durationHours: item.durationHours !== undefined && item.durationHours !== null ? Number(item.durationHours) : null,
+        durationText: safeText(item.durationText || "")
+      };
     }
 
     async function importSchedules(file){
@@ -1251,20 +1447,893 @@
         if(!file || file.size>2_000_000) throw new Error("Choose a JSON file smaller than 2 MB.");
         const data = JSON.parse(await file.text());
         const incoming = Array.isArray(data.profiles) ? data.profiles : (data.name && Array.isArray(data.classes) ? [data] : []);
-        if(!incoming.length || incoming.length>100) throw new Error("No valid profiles were found.");
-        const added = incoming.map(item=>{
-          if(!item || !Array.isArray(item.classes) || item.classes.length>500) throw new Error("A profile is invalid or too large.");
-          const id = genId();
-          return {id, name:String(item.name || "Imported schedule").slice(0,80), classes:item.classes.map(cleanImportedClass)};
-        });
-        for(const profile of added) profiles[profile.id] = profile;
-        activeProfileId = added[0].id;
+        if(!incoming.length && !Array.isArray(data.exams)) throw new Error("No valid profiles or exams were found.");
+
+        if(incoming.length > 0){
+          if(incoming.length>100) throw new Error("Too many profiles found.");
+          const added = incoming.map(item=>{
+            if(!item || !Array.isArray(item.classes) || item.classes.length>500) throw new Error("A profile is invalid or too large.");
+            const id = genId();
+            return {id, name:String(item.name || "Imported schedule").slice(0,80), classes:item.classes.map(cleanImportedClass)};
+          });
+          for(const profile of added) profiles[profile.id] = profile;
+          activeProfileId = added[0].id;
+        }
+
+        if(Array.isArray(data.exams)){
+          const validExams = data.exams.map(cleanImportedExam).filter(Boolean);
+          if(validExams.length > 0){
+            exams = validExams;
+            saveExams();
+          }
+        }
+
         save(); render();
-        showToast(`Imported ${added.length} profile${added.length===1 ? "" : "s"}`);
+        showToast("Schedule and exam data imported");
       }catch(error){
         alert(`Could not import schedule: ${error.message}`);
       }finally{
         importFile.value = "";
+      }
+    }
+
+    // --------- Exam Tracker ---------
+    const SAMPLE_EXAM_RAW = `Exam Date\tExam Time\tCourse code\tCourse title\tExam Room\tSeat No\tRemark
+19/10/2569\t13.00 - 16.00\tPRE380\tENGINEERING ECONOMICS\tLIB108\t58\t-
+22/10/2569\t13.00 - 16.00\tCPE371\tBIG DATA ENGINEERING\tCB2506\t5\t-
+26/10/2569\t9.00 - 12.00\tCPE333\tOPERATING SYSTEMS\tCB2606\t15\t-
+26/10/2569\t13.00 - 16.00\tPRE380\tENGINEERING ECONOMICS\tNO EXAM-1\t127\t-
+27/10/2569\t13.00 - 16.00\tCPE334\tSOFTWARE ENGINEERING\tCB2403\t47\t-
+03/11/2569\t13.00 - 16.00\tCPE333\tOPERATING SYSTEMS\tNO EXAM-1\t314\t-
+06/11/2569\t9.00 - 12.00\tCPE334\tSOFTWARE ENGINEERING\tNO EXAM-1\t363\t-
+06/11/2569\t13.00 - 16.00\tPRE380\tENGINEERING ECONOMICS\tNO EXAM-1\t600\t-
+07/11/2569\t13.00 - 16.00\tCPE371\tBIG DATA ENGINEERING\tNO EXAM-1\t180\t-
+-\t- \tCPE301\tPROFESSIONAL ISSUES IN COMPUTER ENGINEERING\t-\t-\t-
+-\t- \tGEN232\tCOMMUNITY BASED RESEARCH AND INNOVATION\t-\t-\t-
+-\t- \tGEN241\tBEAUTY OF LIFE\t-\t-\t-`;
+
+    function loadExams(){
+      try{
+        const raw = localStorage.getItem(STORAGE_EXAMS_KEY);
+        exams = raw ? JSON.parse(raw) : [];
+        if(!Array.isArray(exams)) exams = [];
+      }catch{
+        exams = [];
+      }
+    }
+
+    function saveExams(){
+      localStorage.setItem(STORAGE_EXAMS_KEY, JSON.stringify(exams));
+      hasPendingChanges = true;
+      localStorage.setItem(PENDING_KEY, "true");
+
+      if (!currentUser) {
+        updateSyncStatusUI(navigator.onLine ? "Saved locally" : "Offline");
+      } else {
+        if (!navigator.onLine) {
+          updateSyncStatusUI("Offline");
+        } else {
+          updateSyncStatusUI("Syncing…");
+          debounceSync();
+        }
+      }
+    }
+
+    function switchMainTab(tab){
+      activeMainTab = tab;
+      const isSchedule = (tab === "schedule");
+
+      if (tabScheduleBtn) {
+        tabScheduleBtn.classList.toggle("active", isSchedule);
+        tabScheduleBtn.setAttribute("aria-selected", isSchedule ? "true" : "false");
+      }
+      if (tabExamsBtn) {
+        tabExamsBtn.classList.toggle("active", !isSchedule);
+        tabExamsBtn.setAttribute("aria-selected", !isSchedule ? "true" : "false");
+      }
+
+      if (scheduleTabContent) scheduleTabContent.style.display = isSchedule ? "block" : "none";
+      if (examsTabContent) examsTabContent.style.display = isSchedule ? "none" : "block";
+
+      if (scheduleControls) scheduleControls.style.display = isSchedule ? "flex" : "none";
+
+      if (!isSchedule) {
+        renderExams();
+      }
+    }
+
+    function openExamImportModal(){
+      if (!examImportModal) return;
+      examImportModal.classList.add("show");
+      examImportModal.setAttribute("aria-hidden", "false");
+      if (rawExamText) {
+        rawExamText.value = "";
+        rawExamText.focus();
+      }
+    }
+
+    function closeExamImportModal(){
+      if (!examImportModal) return;
+      examImportModal.classList.remove("show");
+      examImportModal.setAttribute("aria-hidden", "true");
+    }
+
+    function formatTime12h(timeStr){
+      if(!timeStr) return "-";
+      return timeStr.replace(/(\d{1,2})[.:](\d{2})/g, (_, hStr, mStr) => {
+        let h = parseInt(hStr, 10);
+        const m = mStr;
+        const ampm = h >= 12 ? "PM" : "AM";
+        h = (h % 12) || 12;
+        return `${h}:${m} ${ampm}`;
+      });
+    }
+
+    function formatExamTime(timeStr, use24){
+      if(!timeStr) return "-";
+      if(use24){
+        return timeStr.replace(/(\d{1,2})[.:](\d{2})/g, (_, h, m) => `${h.padStart(2, "0")}:${m}`);
+      }
+      return formatTime12h(timeStr);
+    }
+
+    // Measure how long (in hours) an exam will take
+    function getExamDuration(timeStr){
+      if(!timeStr || typeof timeStr !== "string") return null;
+      const match = timeStr.match(/(\d{1,2})[.:](\d{2})\s*[-–—to]+\s*(\d{1,2})[.:](\d{2})/i);
+      if(!match) return null;
+
+      const startH = parseInt(match[1], 10);
+      const startM = parseInt(match[2], 10);
+      const endH = parseInt(match[3], 10);
+      const endM = parseInt(match[4], 10);
+
+      let startTotal = startH * 60 + startM;
+      let endTotal = endH * 60 + endM;
+      if(endTotal <= startTotal){
+        endTotal += 24 * 60;
+      }
+      const diffMinutes = endTotal - startTotal;
+      if(diffMinutes <= 0) return null;
+
+      const hours = diffMinutes / 60;
+      const formattedNumber = Number.isInteger(hours) ? String(hours) : String(Math.round(hours * 100) / 100);
+      const hourWord = hours === 1 ? "hour" : "hours";
+      const hrWord = hours === 1 ? "hr" : "hrs";
+
+      return {
+        hours,
+        diffMinutes,
+        text: `${formattedNumber} ${hourWord}`,
+        shortText: `${formattedNumber} ${hrWord}`
+      };
+    }
+
+    function processExamRow(dateStr, timeStr, code, title, room, seat, remark){
+      dateStr = (dateStr || "").trim();
+      timeStr = (timeStr || "").trim();
+      code = (code || "").trim();
+      title = (title || "").trim();
+      room = (room || "").trim();
+      seat = (seat || "").trim();
+      remark = (remark || "").trim();
+
+      const combined = `${dateStr} ${timeStr} ${code} ${title} ${room} ${remark}`.toUpperCase();
+      if (combined.includes("NO EXAM") || combined.includes("NO-EXAM")) return null;
+
+      if (!dateStr || dateStr === "-" || !/\d/.test(dateStr)) return null;
+      if (!timeStr || timeStr === "-") return null;
+      if (!room || room === "-" || room.toUpperCase().includes("NO EXAM")) return null;
+
+      const normalizedTime = timeStr.replace(/(\d{1,2})[.:](\d{2})/g, (_, h, m) => {
+        return `${h.padStart(2, "0")}:${m}`;
+      });
+
+      const dateMatch = dateStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+      let parsedTimestamp = 0;
+      let formattedDate = dateStr;
+      let beYear = null;
+      let ceYear = null;
+
+      if (dateMatch) {
+        const day = parseInt(dateMatch[1], 10);
+        const month = parseInt(dateMatch[2], 10);
+        let year = parseInt(dateMatch[3], 10);
+        if (year < 100) year += 2000;
+
+        if (year > 2400) {
+          beYear = year;
+          ceYear = year - 543;
+        } else {
+          ceYear = year;
+          beYear = year + 543;
+        }
+
+        const timeMatch = normalizedTime.match(/(\d{2}):(\d{2})/);
+        const startH = timeMatch ? parseInt(timeMatch[1], 10) : 0;
+        const startM = timeMatch ? parseInt(timeMatch[2], 10) : 0;
+
+        const dateObj = new Date(ceYear, month - 1, day, startH, startM);
+        parsedTimestamp = dateObj.getTime();
+
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const fullDayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const dayName = dayNames[dateObj.getDay()];
+        const fullWeekday = fullDayNames[dateObj.getDay()];
+        const monthName = monthNames[dateObj.getMonth()];
+        formattedDate = `${dayName}, ${day} ${monthName} ${ceYear}`;
+        var formattedDateOnly = `${day} ${monthName} ${ceYear}`;
+        var weekday = fullWeekday;
+      }
+
+      // Auto-detect cheatsheet from remark or course title
+      let cheatsheetStatus = "unset";
+      let cheatsheetNote = "";
+      const combinedUpper = `${remark} ${title} ${room}`.toUpperCase();
+      if (combinedUpper.includes("OPEN BOOK") || combinedUpper.includes("OPEN-BOOK")) {
+        cheatsheetStatus = "open_book";
+        cheatsheetNote = "Open Book Exam";
+      } else if (combinedUpper.includes("NO CHEAT") || combinedUpper.includes("CLOSED BOOK") || combinedUpper.includes("CLOSED-BOOK")) {
+        cheatsheetStatus = "not_allowed";
+        cheatsheetNote = "Closed Book";
+      } else if (combinedUpper.includes("A4") || combinedUpper.includes("CHEATSHEET") || combinedUpper.includes("CHEAT SHEET") || combinedUpper.includes("FORMULA")) {
+        cheatsheetStatus = "allowed";
+        cheatsheetNote = remark || "1 Page A4 allowed";
+      }
+
+      // Auto-detect calculator permission from remark or course title
+      let calculatorStatus = "unset";
+      let calculatorNote = "";
+      if (combinedUpper.includes("NO CALC") || combinedUpper.includes("NO-CALC") || combinedUpper.includes("WITHOUT CALC")) {
+        calculatorStatus = "not_allowed";
+        calculatorNote = "No Calculator";
+      } else if (combinedUpper.includes("SCIENTIFIC")) {
+        calculatorStatus = "allowed";
+        calculatorNote = "Scientific Calculator";
+      } else if (combinedUpper.includes("CALCULATOR") || combinedUpper.includes("CALC")) {
+        calculatorStatus = "allowed";
+        calculatorNote = "Calculator Allowed";
+      }
+
+      const durationInfo = getExamDuration(normalizedTime);
+
+      return {
+        id: genId(),
+        rawDate: dateStr,
+        formattedDate,
+        weekday: weekday || "",
+        formattedDateOnly: formattedDateOnly || dateStr,
+        beYear,
+        ceYear,
+        timestamp: parsedTimestamp,
+        time: normalizedTime,
+        durationHours: durationInfo ? durationInfo.hours : null,
+        durationText: durationInfo ? durationInfo.text : "",
+        code,
+        title,
+        room,
+        seat: (seat === "-" || !seat) ? "" : seat,
+        remark: (remark === "-" || !remark) ? "" : remark,
+        cheatsheetStatus,
+        cheatsheetNote,
+        calculatorStatus,
+        calculatorNote
+      };
+    }
+
+    function parseRawExamSchedule(text){
+      if (!text || typeof text !== "string") return [];
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const list = [];
+      const headerWords = ["exam date", "exam time", "course code", "course title", "exam room", "seat no", "remark"];
+
+      // 1. First attempt: line-by-line tab or multi-space separated rows
+      for (const line of lines) {
+        const lower = line.toLowerCase();
+        if (headerWords.some(hw => lower === hw || lower.startsWith(hw))) continue;
+
+        let parts = line.split(/\t/).map(s => s.trim());
+        if (parts.length < 4) {
+          parts = line.split(/\s{2,}/).map(s => s.trim());
+        }
+        if (parts.length >= 4) {
+          const exam = processExamRow(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5], parts[6]);
+          if (exam) list.push(exam);
+        }
+      }
+
+      // 2. Fallback: if no exams found, check if cells were pasted one-per-line
+      if (list.length === 0 && lines.length >= 5) {
+        const filteredTokens = lines.filter(l => !headerWords.includes(l.toLowerCase()));
+        let i = 0;
+        while (i < filteredTokens.length) {
+          const tok = filteredTokens[i];
+          if (/^(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|-)$/.test(tok)) {
+            const dateStr = tok;
+            const timeStr = filteredTokens[i + 1] || "";
+            const code = filteredTokens[i + 2] || "";
+            const title = filteredTokens[i + 3] || "";
+            const room = filteredTokens[i + 4] || "";
+            const seat = filteredTokens[i + 5] || "";
+            const remark = filteredTokens[i + 6] || "";
+
+            const exam = processExamRow(dateStr, timeStr, code, title, room, seat, remark);
+            if (exam) {
+              list.push(exam);
+              i += 7;
+              continue;
+            }
+          }
+          i++;
+        }
+      }
+
+      // Sort chronologically
+      list.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+      return list;
+    }
+
+    // Always measure in days, not weeks
+    function getExamCountdown(timestamp){
+      if (!timestamp) return { text: "", status: "upcoming" };
+      const now = new Date();
+      const examDate = new Date(timestamp);
+
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const examDayStart = new Date(examDate.getFullYear(), examDate.getMonth(), examDate.getDate()).getTime();
+      const dayDiff = Math.round((examDayStart - todayStart) / (1000 * 60 * 60 * 24));
+
+      if (dayDiff < 0) {
+        const abs = Math.abs(dayDiff);
+        return { text: abs === 1 ? "1 day ago" : `${abs} days ago`, status: "passed" };
+      } else if (dayDiff === 0) {
+        return { text: "Today", status: "today" };
+      } else if (dayDiff === 1) {
+        return { text: "Tomorrow (1 day)", status: "tomorrow" };
+      } else {
+        return { text: `In ${dayDiff} days`, status: "upcoming" };
+      }
+    }
+
+    // Measure study preparation window between exams (excluding exam days themselves)
+    function getStudyGapInfo(exam, prevExam){
+      if (!prevExam) {
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const examDate = new Date(exam.timestamp);
+        const examDayStart = new Date(examDate.getFullYear(), examDate.getMonth(), examDate.getDate()).getTime();
+        const daysUntil = Math.round((examDayStart - todayStart) / (1000 * 60 * 60 * 24));
+        if (daysUntil > 1) {
+          const prepDays = daysUntil - 1;
+          return {
+            text: `${prepDays} day${prepDays === 1 ? "" : "s"} to study until exams begin`,
+            type: "first",
+            days: prepDays
+          };
+        } else if (daysUntil === 1) {
+          return {
+            text: "Half a day to study before exams begin",
+            type: "tight",
+            days: 0.5
+          };
+        } else if (daysUntil === 0) {
+          return {
+            text: "First exam is today",
+            type: "tight",
+            days: 0
+          };
+        }
+        return null;
+      }
+
+      const currDate = new Date(exam.timestamp);
+      const prevDate = new Date(prevExam.timestamp);
+      const currDayStart = new Date(currDate.getFullYear(), currDate.getMonth(), currDate.getDate()).getTime();
+      const prevDayStart = new Date(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate()).getTime();
+      const calendarDiff = Math.round((currDayStart - prevDayStart) / (1000 * 60 * 60 * 24));
+
+      if (calendarDiff <= 0) {
+        return {
+          text: `Same day exam after ${prevExam.code} (no study day)`,
+          type: "tight",
+          days: 0
+        };
+      } else if (calendarDiff === 1) {
+        // Exam right after another (e.g. 26th then 27th)
+        return {
+          text: `Half a day to study after ${prevExam.code}`,
+          type: "tight",
+          days: 0.5
+        };
+      } else {
+        // e.g. 19th then 22nd: 3 calendar days diff -> 2 days to study (20th and 21st)
+        const studyDays = calendarDiff - 1;
+        return {
+          text: studyDays === 1
+            ? `1 day to study after ${prevExam.code}`
+            : `${studyDays} days to study after ${prevExam.code}`,
+          type: studyDays <= 1 ? "tight" : "normal",
+          days: studyDays
+        };
+      }
+    }
+
+    function extractBaseCourseCode(code){
+      if(!code) return "";
+      const cleaned = String(code).trim().toUpperCase();
+      const match = cleaned.match(/^([A-Z]{2,5}\s*\d{3,5})/);
+      if(match){
+        return match[1].replace(/\s+/g, "");
+      }
+      return cleaned.split(/\s+/)[0];
+    }
+
+    function courseCodesMatch(codeA, codeB){
+      if(!codeA || !codeB) return false;
+      const a = String(codeA).trim().toUpperCase();
+      const b = String(codeB).trim().toUpperCase();
+      if(a === b) return true;
+
+      const baseA = extractBaseCourseCode(a);
+      const baseB = extractBaseCourseCode(b);
+      if(baseA && baseB && baseA === baseB) return true;
+
+      return a.includes(baseB) || b.includes(baseA);
+    }
+
+    // Resolves course color matching the color scheme selected in the schedule tab
+    function getColorForCourse(courseCode){
+      if(!courseCode) return { type: "palette", id: "blue" };
+      const cleanCode = courseCode.trim().toUpperCase();
+      const baseCode = extractBaseCourseCode(cleanCode);
+      const deptPrefix = baseCode.match(/^[A-Z]+/)?.[0] || "";
+
+      // 1. Direct match in current active schedule profile
+      const currentProf = profiles[activeProfileId];
+      if(currentProf && Array.isArray(currentProf.classes)){
+        const directMatch = currentProf.classes.find(c => courseCodesMatch(c.code, cleanCode));
+        if(directMatch && directMatch.color) return directMatch.color;
+      }
+
+      // 2. Direct match across other profiles
+      for(const prof of Object.values(profiles)){
+        if(prof && Array.isArray(prof.classes)){
+          const directMatch = prof.classes.find(c => courseCodesMatch(c.code, cleanCode));
+          if(directMatch && directMatch.color) return directMatch.color;
+        }
+      }
+
+      // 3. Department prefix match in current profile (e.g. all CPE classes share color)
+      if(deptPrefix && currentProf && Array.isArray(currentProf.classes)){
+        const deptMatch = currentProf.classes.find(c => {
+          const cBase = extractBaseCourseCode(c.code);
+          return cBase.startsWith(deptPrefix) && c.color;
+        });
+        if(deptMatch && deptMatch.color) return deptMatch.color;
+      }
+
+      // 4. Category badge match in current profile (e.g. Major, General, Math, Science)
+      const badge = getBadgeForCourse(courseCode);
+      if(badge && currentProf && Array.isArray(currentProf.classes)){
+        const badgeMatch = currentProf.classes.find(c => c.badge === badge && c.color);
+        if(badgeMatch && badgeMatch.color) return badgeMatch.color;
+      }
+
+      // 5. Default palettes based on category badge or department prefix
+      if(badge === "Major" || deptPrefix === "CPE" || deptPrefix === "PRE") return { type: "palette", id: "blue" };
+      if(badge === "Math" || deptPrefix === "MTH") return { type: "palette", id: "green" };
+      if(badge === "Science" || deptPrefix === "PHY" || deptPrefix === "CHM" || deptPrefix === "SCI") return { type: "palette", id: "purple" };
+      if(badge === "General" || deptPrefix === "LNG" || deptPrefix === "GEN") return { type: "palette", id: "orange" };
+
+      return { type: "palette", id: "blue" };
+    }
+
+    function getBadgeForCourse(courseCode){
+      if (!courseCode) return "";
+      const cleanCode = courseCode.trim().toUpperCase();
+
+      // 1. Check current profile's classes: strictly mimic badge or lack thereof
+      const currentProf = profiles[activeProfileId];
+      if (currentProf && Array.isArray(currentProf.classes)) {
+        const matches = currentProf.classes.filter(c => courseCodesMatch(c.code, cleanCode));
+        if (matches.length > 0) {
+          const withBadge = matches.find(c => c.badge);
+          // If a matching class has a badge, use it; if no matching class has a badge, return ""
+          return withBadge ? withBadge.badge : "";
+        }
+      }
+
+      // 2. Check other profiles
+      for (const prof of Object.values(profiles)) {
+        if (prof && Array.isArray(prof.classes)) {
+          const matches = prof.classes.filter(c => courseCodesMatch(c.code, cleanCode));
+          if (matches.length > 0) {
+            const withBadge = matches.find(c => c.badge);
+            return withBadge ? withBadge.badge : "";
+          }
+        }
+      }
+
+      // 3. If course is not in any profile, it has no category badge
+      return "";
+    }
+
+    function deleteExam(id){
+      const ex = exams.find(e => e.id === id);
+      const name = ex ? ex.code : "exam";
+      if (!confirm(`Remove exam for ${name}?`)) return;
+      exams = exams.filter(e => e.id !== id);
+      saveExams();
+      renderExams();
+      showToast(`Exam for ${name} removed`);
+    }
+
+    function clearAllExams(){
+      if (exams.length === 0) return;
+      if (!confirm(`Are you sure you want to clear all ${exams.length} exams?`)) return;
+      exams = [];
+      saveExams();
+      renderExams();
+      showToast("All exams cleared");
+    }
+
+    function handleParseExams(){
+      const text = (rawExamText?.value || "").trim();
+      if (!text) {
+        alert("Please paste your raw exam schedule text first.");
+        return;
+      }
+      const parsed = parseRawExamSchedule(text);
+      if (parsed.length === 0) {
+        alert("No valid exam dates found in the pasted text.\n\nNote: Entries marked with 'NO EXAM' or without dates are automatically excluded.");
+        return;
+      }
+
+      // Merge by code + rawDate
+      const existingKeys = new Set(exams.map(e => `${e.code}_${e.rawDate}`));
+      for (const newEx of parsed) {
+        const key = `${newEx.code}_${newEx.rawDate}`;
+        if (!existingKeys.has(key)) {
+          exams.push(newEx);
+          existingKeys.add(key);
+        } else {
+          const idx = exams.findIndex(e => `${e.code}_${e.rawDate}` === key);
+          if (idx >= 0) {
+            // preserve cheatsheet & calculator settings if user previously edited it
+            newEx.cheatsheetStatus = exams[idx].cheatsheetStatus || newEx.cheatsheetStatus;
+            newEx.cheatsheetNote = exams[idx].cheatsheetNote || newEx.cheatsheetNote;
+            newEx.calculatorStatus = exams[idx].calculatorStatus || newEx.calculatorStatus;
+            newEx.calculatorNote = exams[idx].calculatorNote || newEx.calculatorNote;
+            exams[idx] = newEx;
+          }
+        }
+      }
+
+      saveExams();
+      renderExams();
+      closeExamImportModal();
+      showToast(`Successfully imported ${parsed.length} exam${parsed.length === 1 ? "" : "s"}!`);
+    }
+
+    function loadSampleExams(){
+      const parsed = parseRawExamSchedule(SAMPLE_EXAM_RAW);
+      exams = parsed;
+      saveExams();
+      renderExams();
+      showToast(`Loaded ${parsed.length} sample exams!`);
+    }
+
+    // Cheatsheet Modal Handling
+    function openCheatsheetModal(examId){
+      const exam = exams.find(e => e.id === examId);
+      if (!exam || !cheatsheetModal) return;
+      editingCheatsheetExamId = examId;
+      selectedCheatsheetStatus = exam.cheatsheetStatus || "unset";
+      selectedCheatsheetNote = exam.cheatsheetNote || "";
+
+      if (cheatsheetModalTitle) {
+        cheatsheetModalTitle.textContent = `Cheatsheet: ${exam.code}`;
+      }
+      if (cheatsheetModalSubtitle) {
+        cheatsheetModalSubtitle.textContent = `Set cheatsheet and allowed materials for ${exam.code} - ${exam.title || "Exam"}`;
+      }
+      if (cheatsheetCustomNote) {
+        cheatsheetCustomNote.value = selectedCheatsheetNote;
+      }
+
+      const optBtns = cheatsheetModal.querySelectorAll(".cheatsheet-opt-btn");
+      optBtns.forEach(btn => {
+        const status = btn.dataset.status;
+        const note = btn.dataset.note;
+        const isMatch = (status === selectedCheatsheetStatus && (!note || note === selectedCheatsheetNote));
+        btn.classList.toggle("active", isMatch);
+      });
+
+      cheatsheetModal.classList.add("show");
+      cheatsheetModal.setAttribute("aria-hidden", "false");
+      if (cheatsheetCustomNote) cheatsheetCustomNote.focus();
+    }
+
+    function closeCheatsheetModal(){
+      if (!cheatsheetModal) return;
+      cheatsheetModal.classList.remove("show");
+      cheatsheetModal.setAttribute("aria-hidden", "true");
+      editingCheatsheetExamId = null;
+    }
+
+    function saveCheatsheetRules(){
+      if (!editingCheatsheetExamId) return;
+      const exam = exams.find(e => e.id === editingCheatsheetExamId);
+      if (!exam) return;
+
+      exam.cheatsheetStatus = selectedCheatsheetStatus;
+      exam.cheatsheetNote = (cheatsheetCustomNote?.value || selectedCheatsheetNote || "").trim();
+
+      saveExams();
+      renderExams();
+      closeCheatsheetModal();
+      showToast(`Updated cheatsheet for ${exam.code}`);
+    }
+
+    // Calculator Modal Handling
+    function openCalculatorModal(examId){
+      const exam = exams.find(e => e.id === examId);
+      if (!exam || !calculatorModal) return;
+      editingCalculatorExamId = examId;
+      selectedCalculatorStatus = exam.calculatorStatus || "unset";
+      selectedCalculatorNote = exam.calculatorNote || "";
+
+      if (calculatorModalTitle) {
+        calculatorModalTitle.textContent = `Calculator: ${exam.code}`;
+      }
+      if (calculatorModalSubtitle) {
+        calculatorModalSubtitle.textContent = `Set calculator permissions for ${exam.code} - ${exam.title || "Exam"}`;
+      }
+      if (calculatorCustomNote) {
+        calculatorCustomNote.value = selectedCalculatorNote;
+      }
+
+      const optBtns = calculatorModal.querySelectorAll(".calculator-opt-btn");
+      optBtns.forEach(btn => {
+        const status = btn.dataset.status;
+        const note = btn.dataset.note;
+        const isMatch = (status === selectedCalculatorStatus && (!note || note === selectedCalculatorNote));
+        btn.classList.toggle("active", isMatch);
+      });
+
+      calculatorModal.classList.add("show");
+      calculatorModal.setAttribute("aria-hidden", "false");
+      if (calculatorCustomNote) calculatorCustomNote.focus();
+    }
+
+    function closeCalculatorModal(){
+      if (!calculatorModal) return;
+      calculatorModal.classList.remove("show");
+      calculatorModal.setAttribute("aria-hidden", "true");
+      editingCalculatorExamId = null;
+    }
+
+    function saveCalculatorRules(){
+      if (!editingCalculatorExamId) return;
+      const exam = exams.find(e => e.id === editingCalculatorExamId);
+      if (!exam) return;
+
+      exam.calculatorStatus = selectedCalculatorStatus;
+      exam.calculatorNote = (calculatorCustomNote?.value || selectedCalculatorNote || "").trim();
+
+      saveExams();
+      renderExams();
+      closeCalculatorModal();
+      showToast(`Updated calculator rule for ${exam.code}`);
+    }
+
+    function renderExams(){
+      if (examCountBadge) {
+        if (exams.length > 0) {
+          examCountBadge.textContent = String(exams.length);
+          examCountBadge.style.display = "inline-flex";
+        } else {
+          examCountBadge.style.display = "none";
+        }
+      }
+
+      if (examTimeFormatToggle) {
+        examTimeFormatToggle.checked = !!prefs.time24;
+      }
+
+      if (!exams || exams.length === 0) {
+        if (examsEmptyState) examsEmptyState.style.display = "flex";
+        if (examsList) {
+          examsList.innerHTML = "";
+          examsList.style.display = "none";
+        }
+        if (nextExamBanner) {
+          nextExamBanner.innerHTML = "";
+          nextExamBanner.style.display = "none";
+        }
+        if (clearExamsBtn) clearExamsBtn.style.display = "none";
+        if (examsSummaryText) examsSummaryText.textContent = "Organize and track your upcoming exam schedule";
+        return;
+      }
+
+      if (examsEmptyState) examsEmptyState.style.display = "none";
+      if (examsList) examsList.style.display = "grid";
+      if (clearExamsBtn) clearExamsBtn.style.display = "inline-flex";
+      if (examsSummaryText) {
+        examsSummaryText.textContent = `${exams.length} exam${exams.length === 1 ? "" : "s"} scheduled`;
+      }
+
+      // Sort chronologically
+      exams.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+      // Cutoff: allow exams from today onwards (or within past 3 hours)
+      const cutoffTime = Date.now() - (3 * 60 * 60 * 1000);
+      const nextExam = exams.find(e => (e.timestamp || 0) >= cutoffTime);
+
+      if (nextExam && nextExamBanner) {
+        const badge = getBadgeForCourse(nextExam.code);
+        const cd = getExamCountdown(nextExam.timestamp);
+        const formattedNextTime = formatExamTime(nextExam.time, prefs.time24);
+        const nextDuration = getExamDuration(nextExam.time) || (nextExam.durationHours ? { hours: nextExam.durationHours, text: nextExam.durationText } : null);
+        const nextColor = getColorForCourse(nextExam.code);
+
+        nextExamBanner.style.display = "flex";
+        nextExamBanner.style.cssText = classStyle(nextColor);
+        nextExamBanner.innerHTML = `
+          <div class="banner-info">
+            <div class="banner-label">NEXT UPCOMING EXAM</div>
+            <div class="banner-course">
+              ${escapeHtml(nextExam.code)} - ${escapeHtml(nextExam.title)}
+              ${badge ? ` <span class="category-badge category-badge--${badge.toLowerCase()}">${escapeHtml(badge)}</span>` : ""}
+            </div>
+            <div class="banner-meta">
+              <span>Day: <strong>${escapeHtml(nextExam.weekday || "")}</strong></span>
+              &nbsp;·&nbsp;
+              <span>Date: ${escapeHtml(nextExam.formattedDateOnly || nextExam.formattedDate)}</span>
+              &nbsp;·&nbsp;
+              <span>Time: ${escapeHtml(formattedNextTime)}${nextDuration ? ` (<strong>${escapeHtml(nextDuration.text)}</strong>)` : ""}</span>
+              &nbsp;·&nbsp;
+              <span>Room: ${escapeHtml(nextExam.room)}</span>
+              ${nextExam.seat ? `&nbsp;·&nbsp;<span>Seat: ${escapeHtml(nextExam.seat)}</span>` : ""}
+            </div>
+          </div>
+          <div class="banner-countdown ${cd.status}">${escapeHtml(cd.text)}</div>
+        `;
+      } else if (nextExamBanner) {
+        nextExamBanner.innerHTML = "";
+        nextExamBanner.style.display = "none";
+      }
+
+      if (examsList) {
+        examsList.innerHTML = "";
+        exams.forEach((exam, idx) => {
+          const isNext = nextExam && (exam.id === nextExam.id);
+          const badge = getBadgeForCourse(exam.code);
+          const cd = getExamCountdown(exam.timestamp);
+          const formattedTime = formatExamTime(exam.time, prefs.time24);
+          const duration = getExamDuration(exam.time) || (exam.durationHours ? { hours: exam.durationHours, text: exam.durationText } : null);
+          const courseColor = getColorForCourse(exam.code);
+          const prevExam = idx > 0 ? exams[idx - 1] : null;
+          const studyGap = getStudyGapInfo(exam, prevExam);
+
+          // Cheatsheet status & label
+          let csClass = "unset";
+          let csIcon = "+";
+          let csText = "Cheatsheet: Unspecified";
+          if (exam.cheatsheetStatus === "allowed") {
+            csClass = "allowed";
+            csIcon = "✓";
+            csText = exam.cheatsheetNote ? `Cheatsheet: ${exam.cheatsheetNote}` : "Cheatsheet Allowed";
+          } else if (exam.cheatsheetStatus === "not_allowed") {
+            csClass = "not_allowed";
+            csIcon = "✕";
+            csText = "Closed Book (No cheatsheet)";
+          } else if (exam.cheatsheetStatus === "open_book") {
+            csClass = "open-book";
+            csIcon = "◈";
+            csText = "Open Book Exam";
+          }
+
+          // Calculator status & label
+          let calcClass = "unset";
+          let calcIcon = "+";
+          let calcText = "Calculator: Unspecified";
+          if (exam.calculatorStatus === "allowed") {
+            calcClass = "allowed";
+            calcIcon = "✓";
+            calcText = exam.calculatorNote ? `Calculator: ${exam.calculatorNote}` : "Calculator Allowed";
+          } else if (exam.calculatorStatus === "not_allowed") {
+            calcClass = "not_allowed";
+            calcIcon = "✕";
+            calcText = "No Calculator";
+          }
+
+          const card = document.createElement("div");
+          card.className = "exam-card" + (isNext ? " is-next" : "");
+          card.dataset.id = exam.id;
+          card.style.cssText = classStyle(courseColor);
+
+          card.innerHTML = `
+            <button type="button" class="exam-card-delete" title="Delete exam" aria-label="Delete ${escapeHtml(exam.code)} exam">&times;</button>
+            <div class="exam-card-top">
+              <div class="exam-date-badge">
+                <span class="exam-weekday">${escapeHtml(exam.weekday || "")}</span>
+                <span class="exam-date-num">${escapeHtml(exam.formattedDateOnly || exam.formattedDate)}</span>
+                ${exam.beYear ? `<span class="exam-be-year">(${escapeHtml(exam.beYear)} B.E.)</span>` : ""}
+              </div>
+              <div class="exam-top-badges">
+                ${duration ? `<span class="exam-duration-pill" title="Exam duration: ${escapeHtml(duration.text)}">◷ ${escapeHtml(duration.text)}</span>` : ""}
+                <span class="exam-countdown ${cd.status}">${escapeHtml(cd.text)}</span>
+              </div>
+            </div>
+            <div class="exam-code-row">
+              <span class="exam-code">${escapeHtml(exam.code)}</span>
+              ${badge ? `<span class="category-badge category-badge--${badge.toLowerCase()}">${escapeHtml(badge)}</span>` : ""}
+            </div>
+            <div class="exam-title">${escapeHtml(exam.title || "No Title")}</div>
+
+            ${studyGap ? `
+              <div class="exam-study-gap ${studyGap.type}">
+                <span class="gap-icon">◷</span>
+                <span class="gap-text">${escapeHtml(studyGap.text)}</span>
+              </div>
+            ` : ""}
+
+            <div class="exam-indicators-row">
+              <button type="button" class="cheatsheet-pill ${csClass}" data-id="${exam.id}" title="Click to view or change cheatsheet permissions">
+                <span class="pill-sym">${csIcon}</span>
+                <span class="pill-text">${escapeHtml(csText)}</span>
+              </button>
+              <button type="button" class="calculator-pill ${calcClass}" data-id="${exam.id}" title="Click to view or change calculator permissions">
+                <span class="pill-sym">${calcIcon}</span>
+                <span class="pill-text">${escapeHtml(calcText)}</span>
+              </button>
+            </div>
+
+            <div class="exam-meta-grid">
+              <div class="exam-meta-item">
+                <span class="exam-meta-label">Time</span>
+                <span class="exam-meta-val">${escapeHtml(formattedTime || "-")}</span>
+              </div>
+              <div class="exam-meta-item">
+                <span class="exam-meta-label">Duration</span>
+                <span class="exam-meta-val exam-duration-val">${duration ? escapeHtml(duration.text) : "-"}</span>
+              </div>
+              <div class="exam-meta-item">
+                <span class="exam-meta-label">Room</span>
+                <span class="exam-meta-val">${escapeHtml(exam.room || "-")}</span>
+              </div>
+              <div class="exam-meta-item">
+                <span class="exam-meta-label">Seat No</span>
+                <span class="exam-meta-val">${escapeHtml(exam.seat || "-")}</span>
+              </div>
+              ${exam.remark && exam.remark !== "-" ? `
+                <div class="exam-meta-item full-width" style="grid-column: 1 / -1;">
+                  <span class="exam-meta-label">Remark</span>
+                  <span class="exam-meta-val">${escapeHtml(exam.remark)}</span>
+                </div>
+              ` : ""}
+            </div>
+          `;
+
+          const delBtn = card.querySelector(".exam-card-delete");
+          if (delBtn) {
+            delBtn.addEventListener("click", () => deleteExam(exam.id));
+          }
+
+          const csBtn = card.querySelector(".cheatsheet-pill");
+          if (csBtn) {
+            csBtn.addEventListener("click", () => openCheatsheetModal(exam.id));
+          }
+
+          const calcBtn = card.querySelector(".calculator-pill");
+          if (calcBtn) {
+            calcBtn.addEventListener("click", () => openCalculatorModal(exam.id));
+          }
+
+          examsList.appendChild(card);
+        });
       }
     }
 
@@ -1331,6 +2400,29 @@
       duplicateProfileBtn.addEventListener("click", duplicateProfile);
       deleteProfileBtn.addEventListener("click", deleteProfile);
       addClassBtn.addEventListener("click", ()=> openClassModal(null));
+
+      if (badgeFilterSelect) {
+        badgeFilterSelect.value = activeBadgeFilter;
+        badgeFilterSelect.addEventListener("change", e=>{
+          activeBadgeFilter = e.target.value;
+          buildGrid();
+          buildAgenda();
+        });
+      }
+
+      if (badgePicker) {
+        badgePicker.querySelectorAll(".badge-opt-btn").forEach(btn=>{
+          btn.addEventListener("click", ()=>{
+            const val = btn.dataset.badge || "";
+            if (classBadgeInput) classBadgeInput.value = val;
+            badgePicker.querySelectorAll(".badge-opt-btn").forEach(b=>{
+              const isSel = (b === btn);
+              b.classList.toggle("active", isSel);
+              b.setAttribute("aria-checked", isSel ? "true" : "false");
+            });
+          });
+        });
+      }
       exportBtn.addEventListener("click", exportSchedules);
       importBtn.addEventListener("click", ()=>importFile.click());
       importFile.addEventListener("change", ()=>importSchedules(importFile.files[0]));
@@ -1345,17 +2437,98 @@
         installBtn.hidden = true;
       });
 
+      // Main tab navigation (Schedule vs Exam Tracker)
+      if (tabScheduleBtn) tabScheduleBtn.addEventListener("click", () => switchMainTab("schedule"));
+      if (tabExamsBtn) tabExamsBtn.addEventListener("click", () => switchMainTab("exams"));
+
+      // Exam Tracker actions
+      if (openExamImportBtn) openExamImportBtn.addEventListener("click", openExamImportModal);
+      if (emptyImportBtn) emptyImportBtn.addEventListener("click", openExamImportModal);
+      if (cancelExamImportBtn) cancelExamImportBtn.addEventListener("click", closeExamImportModal);
+      if (parseExamBtn) parseExamBtn.addEventListener("click", handleParseExams);
+      if (insertSampleRawBtn) {
+        insertSampleRawBtn.addEventListener("click", () => {
+          if (rawExamText) rawExamText.value = SAMPLE_EXAM_RAW;
+        });
+      }
+      if (loadSampleExamsBtn) loadSampleExamsBtn.addEventListener("click", loadSampleExams);
+      if (clearExamsBtn) clearExamsBtn.addEventListener("click", clearAllExams);
+
+      if (examTimeFormatToggle) {
+        examTimeFormatToggle.checked = !!prefs.time24;
+        examTimeFormatToggle.addEventListener("change", e => {
+          prefs.time24 = !!e.target.checked;
+          if (timeFormatToggle) timeFormatToggle.checked = prefs.time24;
+          save();
+          render();
+        });
+      }
+
+      if (examImportModal) {
+        const modalBackdrop = examImportModal.querySelector(".backdrop");
+        if (modalBackdrop) modalBackdrop.addEventListener("click", closeExamImportModal);
+      }
+
+      // Cheatsheet modal interactions
+      if (cancelCheatsheetBtn) cancelCheatsheetBtn.addEventListener("click", closeCheatsheetModal);
+      if (saveCheatsheetBtn) saveCheatsheetBtn.addEventListener("click", saveCheatsheetRules);
+      if (cheatsheetModal) {
+        const csBackdrop = cheatsheetModal.querySelector(".backdrop");
+        if (csBackdrop) csBackdrop.addEventListener("click", closeCheatsheetModal);
+
+        cheatsheetModal.querySelectorAll(".cheatsheet-opt-btn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            selectedCheatsheetStatus = btn.dataset.status || "unset";
+            selectedCheatsheetNote = btn.dataset.note || "";
+            if (cheatsheetCustomNote && selectedCheatsheetNote) {
+              cheatsheetCustomNote.value = selectedCheatsheetNote;
+            } else if (cheatsheetCustomNote && selectedCheatsheetStatus === "unset") {
+              cheatsheetCustomNote.value = "";
+            }
+            cheatsheetModal.querySelectorAll(".cheatsheet-opt-btn").forEach(b => {
+              b.classList.toggle("active", b === btn);
+            });
+          });
+        });
+      }
+
+      // Calculator modal interactions
+      if (cancelCalculatorBtn) cancelCalculatorBtn.addEventListener("click", closeCalculatorModal);
+      if (saveCalculatorBtn) saveCalculatorBtn.addEventListener("click", saveCalculatorRules);
+      if (calculatorModal) {
+        const calcBackdrop = calculatorModal.querySelector(".backdrop");
+        if (calcBackdrop) calcBackdrop.addEventListener("click", closeCalculatorModal);
+
+        calculatorModal.querySelectorAll(".calculator-opt-btn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            selectedCalculatorStatus = btn.dataset.status || "unset";
+            selectedCalculatorNote = btn.dataset.note || "";
+            if (calculatorCustomNote && selectedCalculatorNote) {
+              calculatorCustomNote.value = selectedCalculatorNote;
+            } else if (calculatorCustomNote && selectedCalculatorStatus === "unset") {
+              calculatorCustomNote.value = "";
+            }
+            calculatorModal.querySelectorAll(".calculator-opt-btn").forEach(b => {
+              b.classList.toggle("active", b === btn);
+            });
+          });
+        });
+      }
+
       document.addEventListener("keydown", event=>{
         if(event.key==="Escape"){
           if(modal.classList.contains("show")) closeClassModal();
           if(shortcutsModal.classList.contains("show")) closeShortcuts();
           if(accountModal && accountModal.classList.contains("show")) closeAccountModal();
           if(conflictModal && conflictModal.classList.contains("show")) closeConflictModal();
+          if(examImportModal && examImportModal.classList.contains("show")) closeExamImportModal();
+          if(cheatsheetModal && cheatsheetModal.classList.contains("show")) closeCheatsheetModal();
+          if(calculatorModal && calculatorModal.classList.contains("show")) closeCalculatorModal();
           return;
         }
         if(event.ctrlKey || event.metaKey || event.altKey || isTypingTarget(event.target)) return;
         const key = event.key.toLowerCase();
-        if(!modal.classList.contains("show") && !shortcutsModal.classList.contains("show") && !accountModal.classList.contains("show") && !conflictModal.classList.contains("show")){
+        if(!modal.classList.contains("show") && !shortcutsModal.classList.contains("show") && !accountModal.classList.contains("show") && !conflictModal.classList.contains("show") && !(examImportModal && examImportModal.classList.contains("show")) && !(cheatsheetModal && cheatsheetModal.classList.contains("show")) && !(calculatorModal && calculatorModal.classList.contains("show"))){
           if(key==="a"){ event.preventDefault(); openClassModal(null); }
           else if(key==="e"){ event.preventDefault(); exportSchedules(); }
           else if(key==="i"){ event.preventDefault(); importFile.click(); }
@@ -1365,6 +2538,7 @@
 
       timeFormatToggle.addEventListener("change", e=>{
         prefs.time24 = !!e.target.checked;
+        if (examTimeFormatToggle) examTimeFormatToggle.checked = prefs.time24;
         save(); render();
       });
 

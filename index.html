@@ -14,14 +14,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.min.css?v=4" />
+  <link rel="stylesheet" href="styles.min.css?v=10" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="app">
     <header>
-      <div class="title">Schedule Maker</div>
-      <div class="controls">
+      <div class="header-top">
+        <div class="title">Schedule Maker</div>
+        <nav class="main-tabs" role="tablist" aria-label="Main Navigation">
+          <button type="button" class="main-tab-btn active" id="tabScheduleBtn" role="tab" aria-selected="true" aria-controls="scheduleTabContent">
+            Schedule
+          </button>
+          <button type="button" class="main-tab-btn" id="tabExamsBtn" role="tab" aria-selected="false" aria-controls="examsTabContent">
+            Exam Tracker <span class="exam-count-badge" id="examCountBadge" style="display:none">0</span>
+          </button>
+        </nav>
+      </div>
+      <div class="controls" id="scheduleControls">
         <span id="syncStatusBadge" class="sync-status status-offline" title="Sync Status">Offline</span>
         <button id="accountBtn" class="account-btn" title="Account / Sync">Sign in</button>
         <select id="profileSelect" title="Profiles"></select>
@@ -30,6 +40,13 @@
         <button id="duplicateProfileBtn">Duplicate</button>
         <button id="deleteProfileBtn" class="danger">Delete</button>
         <button id="addClassBtn" class="primary" title="Add class (A)">Add class</button>
+        <select id="badgeFilterSelect" title="Filter by category badge">
+          <option value="all">All categories</option>
+          <option value="Major">Major</option>
+          <option value="General">General</option>
+          <option value="Math">Math</option>
+          <option value="Science">Science</option>
+        </select>
         <button id="importBtn" title="Import schedule (I)">Import</button>
         <button id="exportBtn" title="Export schedules (E)">Export</button>
         <button id="installBtn" class="install" hidden>Install app</button>
@@ -45,24 +62,67 @@
         </label>
         <label class="toggle">
           <input type="checkbox" id="darkModeToggle" />
-          <span>🌙 Dark</span>
+          <span>◑ Dark</span>
         </label>
       </div>
     </header>
 
     <div class="container">
-      <div class="views">
+      <!-- SCHEDULE TAB CONTENT -->
+      <div id="scheduleTabContent" class="tab-pane active" role="tabpanel">
+        <div class="views">
+          <!-- GRID VIEW -->
+          <div class="view view--grid active" id="gridView">
+            <div class="grid-wrap">
+              <div id="grid" class="schedule-grid"></div>
+            </div>
+          </div>
 
-        <!-- GRID VIEW -->
-        <div class="view view--grid active" id="gridView">
-          <div class="grid-wrap">
-            <div id="grid" class="schedule-grid"></div>
+          <!-- AGENDA VIEW -->
+          <div class="view view--agenda" id="agendaView">
+            <div class="agenda" id="agenda"></div>
           </div>
         </div>
+      </div>
 
-        <!-- AGENDA VIEW -->
-        <div class="view view--agenda" id="agendaView">
-          <div class="agenda" id="agenda"></div>
+      <!-- EXAMS TAB CONTENT -->
+      <div id="examsTabContent" class="tab-pane" role="tabpanel" style="display:none">
+        <div class="exams-container">
+          <div class="exams-header">
+            <div class="exams-title-group">
+              <h2 class="exams-title">Exam Tracker</h2>
+              <div class="exams-subtitle" id="examsSummaryText">Organize and track your upcoming exam schedule</div>
+            </div>
+            <div class="exams-actions">
+              <label class="toggle exam-time-toggle" title="Switch between 12-hour (AM/PM) and 24-hour (military) time">
+                <input type="checkbox" id="examTimeFormatToggle" />
+                <span>24h</span>
+              </label>
+              <button type="button" id="openExamImportBtn" class="primary" title="Paste raw exam text">
+                + Paste Exam Schedule
+              </button>
+              <button type="button" id="clearExamsBtn" class="danger" style="display:none" title="Clear all exams">
+                Clear all
+              </button>
+            </div>
+          </div>
+
+          <!-- Next Exam Highlight Banner -->
+          <div id="nextExamBanner" class="next-exam-banner" style="display:none"></div>
+
+          <!-- Exam Cards Grid -->
+          <div id="examsList" class="exams-grid"></div>
+
+          <!-- Empty State -->
+          <div id="examsEmptyState" class="exams-empty-state">
+            <div class="empty-icon">✦</div>
+            <h3>No Exams Added Yet</h3>
+            <p>Paste the raw exam details copied from your student portal. We will automatically parse and display your exam dates, times, rooms, and seat numbers.</p>
+            <div class="empty-actions">
+              <button type="button" id="emptyImportBtn" class="primary">+ Paste Exam Schedule</button>
+              <button type="button" id="loadSampleExamsBtn">▶ Load Sample (Demo)</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -107,6 +167,21 @@
           Professor(s)
           <input type="text" id="classInstructor" placeholder="e.g. RACHANEE" />
         </label>
+
+        <div class="full form-badge-group">
+          <div class="form-badge-label">
+            <span>Badge / Category</span>
+            <span class="hint">(optional)</span>
+          </div>
+          <div class="badge-picker" id="badgePicker" role="radiogroup" aria-label="Class category badge">
+            <button type="button" class="badge-opt-btn active" data-badge="" role="radio" aria-checked="true">None</button>
+            <button type="button" class="badge-opt-btn badge-opt-major" data-badge="Major" role="radio" aria-checked="false">Major</button>
+            <button type="button" class="badge-opt-btn badge-opt-general" data-badge="General" role="radio" aria-checked="false">General</button>
+            <button type="button" class="badge-opt-btn badge-opt-math" data-badge="Math" role="radio" aria-checked="false">Math</button>
+            <button type="button" class="badge-opt-btn badge-opt-science" data-badge="Science" role="radio" aria-checked="false">Science</button>
+          </div>
+          <input type="hidden" id="classBadge" value="" />
+        </div>
 
         <div class="full">
           <div style="font-weight:700;margin-top:4px;font-size:0.9rem">Color</div>
@@ -231,10 +306,123 @@
     </div>
   </div>
 
-  <div style="text-align:center; padding:12px 0; color:var(--text-3); font-size:0.85rem;">V2.2.0</div>
+  <!-- Paste Exam Schedule Modal -->
+  <div class="modal" id="examImportModal" aria-hidden="true">
+    <div class="backdrop"></div>
+    <div class="dialog exam-import-dialog" role="dialog" aria-modal="true" aria-labelledby="examImportTitle">
+      <h2 id="examImportTitle">Import Exam Schedule</h2>
+      <p class="dialog-desc" style="margin: 0 0 14px 0; color: var(--text-2); font-size: 0.9rem; line-height: 1.4;">
+        Paste your raw exam schedule copied from your student portal. We'll automatically extract the course codes, titles, dates, times, rooms, and seat numbers.
+      </p>
+      <div class="form">
+        <label class="full" style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-weight: 600; font-size: 0.85rem;">Raw Exam Text</span>
+          <textarea id="rawExamText" rows="9" placeholder="Exam Date&#9;Exam Time&#9;Course code&#9;Course title&#9;Exam Room&#9;Seat No&#10;19/10/2569&#9;13.00 - 16.00&#9;PRE380&#9;ENGINEERING ECONOMICS&#9;LIB108&#9;58&#9;-" style="width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--surface); color: var(--text); font-family: monospace; font-size: 0.85rem; box-sizing: border-box; resize: vertical; min-height: 150px;"></textarea>
+        </label>
+        <div class="full" style="font-size: 0.8rem; color: var(--text-3); line-height: 1.4;">
+          • Note: Entries marked with &quot;NO EXAM&quot; or without dates will be filtered out automatically.
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button type="button" id="insertSampleRawBtn" style="margin-right: auto;">Insert Sample</button>
+        <button type="button" id="cancelExamImportBtn">Cancel</button>
+        <button type="button" id="parseExamBtn" class="primary">Parse &amp; Save Exams</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cheatsheet Rules Modal -->
+  <div class="modal" id="cheatsheetModal" aria-hidden="true">
+    <div class="backdrop"></div>
+    <div class="dialog cheatsheet-dialog" role="dialog" aria-modal="true" aria-labelledby="cheatsheetModalTitle" style="max-width:460px;">
+      <h2 id="cheatsheetModalTitle">Cheatsheet Rules</h2>
+      <p id="cheatsheetModalSubtitle" style="margin:0 0 14px 0; color:var(--text-2); font-size:0.88rem; line-height:1.4;">
+        Set cheatsheet permission and allowed materials for this exam.
+      </p>
+      <input type="hidden" id="cheatsheetExamId" />
+      <div class="cheatsheet-options-grid" style="display:grid; grid-template-columns:1fr; gap:8px; margin-bottom:14px;">
+        <button type="button" class="cheatsheet-opt-btn" data-status="allowed" data-note="1 Page A4 (Double-sided)">
+          <span class="opt-icon">✓</span>
+          <span class="opt-label">1 Page A4 (Double-sided)</span>
+        </button>
+        <button type="button" class="cheatsheet-opt-btn" data-status="allowed" data-note="1 Page A4 (Single-sided)">
+          <span class="opt-icon">✓</span>
+          <span class="opt-label">1 Page A4 (Single-sided)</span>
+        </button>
+        <button type="button" class="cheatsheet-opt-btn" data-status="open_book" data-note="Open Book">
+          <span class="opt-icon">◈</span>
+          <span class="opt-label">Open Book Exam</span>
+        </button>
+        <button type="button" class="cheatsheet-opt-btn" data-status="not_allowed" data-note="Closed Book">
+          <span class="opt-icon">✕</span>
+          <span class="opt-label">No Cheatsheet (Closed Book)</span>
+        </button>
+        <button type="button" class="cheatsheet-opt-btn" data-status="unset" data-note="">
+          <span class="opt-icon">—</span>
+          <span class="opt-label">Not Specified / Clear</span>
+        </button>
+      </div>
+      <div class="form" style="margin-bottom:16px;">
+        <label class="full" style="display:flex; flex-direction:column; gap:6px;">
+          <span style="font-weight:600; font-size:0.85rem;">Custom Note / Permitted Items</span>
+          <input type="text" id="cheatsheetCustomNote" placeholder="e.g. Handwritten only, calculator allowed" maxlength="120" style="width:100%; border:1px solid var(--border); border-radius:8px; padding:9px 12px; background:var(--surface); color:var(--text); font-size:0.9rem;" />
+        </label>
+      </div>
+      <div class="dialog-footer">
+        <button type="button" id="cancelCheatsheetBtn">Cancel</button>
+        <button type="button" id="saveCheatsheetBtn" class="primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calculator Rules Modal -->
+  <div class="modal" id="calculatorModal" aria-hidden="true">
+    <div class="backdrop"></div>
+    <div class="dialog calculator-dialog" role="dialog" aria-modal="true" aria-labelledby="calculatorModalTitle" style="max-width:460px;">
+      <h2 id="calculatorModalTitle">Calculator Rules</h2>
+      <p id="calculatorModalSubtitle" style="margin:0 0 14px 0; color:var(--text-2); font-size:0.88rem; line-height:1.4;">
+        Set calculator permissions and allowed models for this exam.
+      </p>
+      <input type="hidden" id="calculatorExamId" />
+      <div class="calculator-options-grid" style="display:grid; grid-template-columns:1fr; gap:8px; margin-bottom:14px;">
+        <button type="button" class="calculator-opt-btn" data-status="allowed" data-note="Scientific Calculator Allowed">
+          <span class="opt-icon">✓</span>
+          <span class="opt-label">Scientific Calculator Allowed</span>
+        </button>
+        <button type="button" class="calculator-opt-btn" data-status="allowed" data-note="Basic / Standard Calculator Only">
+          <span class="opt-icon">✓</span>
+          <span class="opt-label">Basic / Standard Calculator Only</span>
+        </button>
+        <button type="button" class="calculator-opt-btn" data-status="allowed" data-note="Any Calculator Permitted">
+          <span class="opt-icon">✓</span>
+          <span class="opt-label">Any Calculator Permitted</span>
+        </button>
+        <button type="button" class="calculator-opt-btn" data-status="not_allowed" data-note="No Calculator">
+          <span class="opt-icon">✕</span>
+          <span class="opt-label">No Calculator (Prohibited)</span>
+        </button>
+        <button type="button" class="calculator-opt-btn" data-status="unset" data-note="">
+          <span class="opt-icon">—</span>
+          <span class="opt-label">Not Specified / Clear</span>
+        </button>
+      </div>
+      <div class="form" style="margin-bottom:16px;">
+        <label class="full" style="display:flex; flex-direction:column; gap:6px;">
+          <span style="font-weight:600; font-size:0.85rem;">Custom Note / Permitted Models</span>
+          <input type="text" id="calculatorCustomNote" placeholder="e.g. Casio FX-991 allowed, no graphing calc" maxlength="120" style="width:100%; border:1px solid var(--border); border-radius:8px; padding:9px 12px; background:var(--surface); color:var(--text); font-size:0.9rem;" />
+        </label>
+      </div>
+      <div class="dialog-footer">
+        <button type="button" id="cancelCalculatorBtn">Cancel</button>
+        <button type="button" id="saveCalculatorBtn" class="primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center; padding:12px 0; color:var(--text-3); font-size:0.85rem;">V2.8.0</div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="app.min.js?v=4" defer></script>
+  <script src="app.min.js?v=10" defer></script>
 </body>
 </html>

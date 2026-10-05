@@ -1,8 +1,9 @@
 {
   "name": "schedule-maker",
-  "version": "2.2.0",
+  "version": "2.8.0",
   "private": true,
   "scripts": {
+    "start": "npx serve .",
     "build": "terser app.js --compress --mangle --output app.min.js && cleancss -o styles.min.css styles.css",
     "check": "node --check app.js && node --check service-worker.js"
   },
